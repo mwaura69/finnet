@@ -1,0 +1,387 @@
+<a routerLink="/portfolios" class="breadcrumb"
+  >Portfolios <ft-icon name="chevron" /><span>Portfolio details</span></a
+>
+@if(loading()){
+<div class="loading-state" role="status">
+  <span class="spinner"></span>Loading portfolio, holdings and transactions…
+</div>
+<div class="skeleton-grid" aria-hidden="true">
+  <div></div>
+  <div></div>
+  <div></div>
+</div>
+} @else if(error()){
+<div class="error-state" role="alert">
+  <ft-icon name="info" />
+  <h1>Portfolio unavailable</h1>
+  <p>{{ error() }}</p>
+  <button class="button secondary" (click)="load()">Try again</button
+  ><a routerLink="/portfolios" class="text-link">Back to portfolios</a>
+</div>
+} @else if(portfolio();as p){
+<section class="page-heading detail-heading">
+  <div>
+    <div class="eyebrow">
+      CLIENT PORTFOLIO <span class="currency-pill">{{ p.baseCurrency }}</span>
+    </div>
+    <h1>{{ p.name }}</h1>
+    <p>
+      {{ p.clientName }} <span class="separator">·</span> Created {{ p.createdAt | date:'d MMM
+      y':'+0300' }}
+    </p>
+  </div>
+  <div class="heading-actions">
+    <button class="button secondary" (click)="edit.set(true)">
+      <ft-icon name="edit" />Edit portfolio</button
+    ><button class="button primary" (click)="adding.set(true)">
+      <ft-icon name="plus" />Record transaction
+    </button>
+  </div>
+</section>
+@if(notice()){
+<div class="success-notice" role="status">
+  <ft-icon name="check" />{{ notice() }}<button
+    class="icon-button"
+    aria-label="Dismiss notification"
+    (click)="notice.set('')"
+  >
+    <ft-icon name="close" />
+  </button>
+</div>
+} @if(summary();as s){
+<section class="metrics" aria-label="Portfolio financial summary">
+  <article class="metric-card">
+    <div class="metric-label">
+      Portfolio value<span class="metric-icon"><ft-icon name="wallet" /></span>
+    </div>
+    <strong>{{ money(s.totalValue,p.baseCurrency) }}</strong
+    ><span class="metric-foot">{{ s.holdings.length }} instruments currently held</span>
+  </article>
+  <article class="metric-card">
+    <div class="metric-label">
+      Capital invested<span class="metric-icon"><ft-icon name="briefcase" /></span>
+    </div>
+    <strong>{{ money(s.totalInvested,p.baseCurrency) }}</strong
+    ><span class="metric-foot">Moving-average cost basis</span>
+  </article>
+  <article class="metric-card">
+    <div class="metric-label">
+      Unrealized return<span class="metric-icon"><ft-icon name="chart" /></span>
+    </div>
+    <strong [class.positive]="s.unrealizedGain>=0" [class.negative]="s.unrealizedGain<0"
+      >{{ signedMoney(s.unrealizedGain,p.baseCurrency) }}</strong
+    ><span class="metric-foot"
+      ><span [class.positive]="s.unrealizedGain>=0" [class.negative]="s.unrealizedGain<0"
+        >{{ percentage(s.unrealizedGain,s.totalInvested) }}</span
+      >
+      on current holdings</span
+    >
+  </article>
+</section>
+<div class="detail-upper">
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Asset allocation</h2>
+        <p>How your portfolio is invested.</p>
+      </div>
+      <span class="count">{{ s.holdings.length }} instruments</span>
+    </div>
+    <ft-allocation [holdings]="s.holdings" [currency]="p.baseCurrency" />
+  </section>
+  <section class="portfolio-note">
+    <span class="eyebrow light">THE PORTFOLIO PICTURE</span>
+    <h2>Know what you hold.<br />Understand how it moves.</h2>
+    <dl>
+      <div>
+        <dt>Recorded transactions</dt>
+        <dd>{{ transactions().length }}</dd>
+      </div>
+      <div>
+        <dt>Realized return</dt>
+        <dd
+          [class.positive-on-dark]="s.realizedGain>=0"
+          [class.negative-on-dark]="s.realizedGain<0"
+        >
+          {{ signedMoney(s.realizedGain,p.baseCurrency) }}
+        </dd>
+      </div>
+      <div>
+        <dt>Valuation method</dt>
+        <dd>Latest trade price</dd>
+      </div>
+    </dl>
+    <p>
+      <ft-icon name="info" />Values are illustrative, based on the latest recorded trade per
+      instrument. No live market feed is connected.
+    </p>
+  </section>
+</div>
+<section class="panel transaction-panel">
+  <div class="tabbar" role="tablist" aria-label="Portfolio information">
+    <button
+      role="tab"
+      id="transactions-tab"
+      aria-controls="transactions-panel"
+      [attr.aria-selected]="tab()==='transactions'"
+      [class.active]="tab()==='transactions'"
+      (click)="tab.set('transactions')"
+    >
+      Transactions <span class="count">{{ transactions().length }}</span></button
+    ><button
+      role="tab"
+      id="holdings-tab"
+      aria-controls="holdings-panel"
+      [attr.aria-selected]="tab()==='holdings'"
+      [class.active]="tab()==='holdings'"
+      (click)="tab.set('holdings')"
+    >
+      Holdings <span class="count">{{ s.holdings.length }}</span>
+    </button>
+  </div>
+  @if(tab()==='transactions'){
+  <div role="tabpanel" id="transactions-panel" aria-labelledby="transactions-tab">
+    <div class="transaction-toolbar">
+      <label class="search-input"
+        ><ft-icon name="search" /><span class="sr-only">Filter by instrument</span
+        ><input
+          type="search"
+          placeholder="Search instrument…"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event);page.set(1)" /></label
+      ><label
+        ><span class="sr-only">Transaction type</span
+        ><select [ngModel]="type()" (ngModelChange)="type.set($event);page.set(1)">
+          <option value="">All trade types</option>
+          <option value="BUY">Buy</option>
+          <option value="SELL">Sell</option>
+        </select></label
+      >
+      <div class="date-filters">
+        <label
+          ><span>From</span
+          ><input
+            type="date"
+            [ngModel]="from()"
+            (ngModelChange)="from.set($event);page.set(1)" /></label
+        ><label
+          ><span>To</span
+          ><input
+            type="date"
+            [min]="from()"
+            [ngModel]="to()"
+            (ngModelChange)="to.set($event);page.set(1)"
+        /></label>
+      </div>
+      <button
+        class="button secondary export-button"
+        (click)="exportCsv()"
+        [disabled]="!filtered().length"
+      >
+        <ft-icon name="download" />Export CSV
+      </button>
+    </div>
+    @if(from() && to() && from()>to()){
+    <p class="form-error filter-error" role="alert">
+      The start date must be on or before the end date.
+    </p>
+    } @if(!transactions().length){
+    <div class="empty">
+      <span class="empty-icon"><ft-icon name="swap" /></span>
+      <h3>The first trade sets things in motion</h3>
+      <p>Record a buy transaction to start building this portfolio's holdings.</p>
+      <button class="button primary" (click)="adding.set(true)">
+        <ft-icon name="plus" />Record transaction
+      </button>
+    </div>
+    } @else if(!filtered().length){
+    <div class="empty compact">
+      <h3>No trades match these filters</h3>
+      <p>Try a different instrument, type or date range.</p>
+      <button class="button secondary" (click)="reset()">Clear filters</button>
+    </div>
+    } @else{
+    <div class="table-scroll">
+      <table>
+        <caption class="sr-only">
+          Transactions in {{ p.baseCurrency }}. Activate a column header to sort.
+        </caption>
+        <thead>
+          <tr>
+            <th [attr.aria-sort]="sortLabel('instrument')">
+              <button class="sort-button" (click)="order('instrument')">
+                Instrument
+                <span>{{ sort()==='instrument' ? (direction()===1 ? '↑' : '↓') : '↕' }}</span>
+              </button>
+            </th>
+            <th>Type</th>
+            <th class="numeric" [attr.aria-sort]="sortLabel('quantity')">
+              <button class="sort-button" (click)="order('quantity')">
+                Quantity
+                <span>{{ sort()==='quantity' ? (direction()===1 ? '↑' : '↓') : '↕' }}</span>
+              </button>
+            </th>
+            <th class="numeric" [attr.aria-sort]="sortLabel('unitPrice')">
+              <button class="sort-button" (click)="order('unitPrice')">
+                Unit price
+                <span>{{ sort()==='unitPrice' ? (direction()===1 ? '↑' : '↓') : '↕' }}</span>
+              </button>
+            </th>
+            <th class="numeric" [attr.aria-sort]="sortLabel('amount')">
+              <button class="sort-button" (click)="order('amount')">
+                Total value
+                <span>{{ sort()==='amount' ? (direction()===1 ? '↑' : '↓') : '↕' }}</span>
+              </button>
+            </th>
+            <th [attr.aria-sort]="sortLabel('tradeDate')">
+              <button class="sort-button" (click)="order('tradeDate')">
+                Trade date
+                <span>{{ sort()==='tradeDate' ? (direction()===1 ? '↑' : '↓') : '↕' }}</span>
+              </button>
+            </th>
+            <th><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for(t of rows();track t.id){
+          <tr>
+            <td><strong>{{ t.instrument }}</strong></td>
+            <td><span class="trade-badge" [class.sell]="t.type==='SELL'">{{ t.type }}</span></td>
+            <td class="numeric">{{ number(t.quantity) }}</td>
+            <td class="numeric">{{ money(t.unitPrice,p.baseCurrency) }}</td>
+            <td class="numeric">
+              <strong>{{ money(t.quantity*t.unitPrice,p.baseCurrency) }}</strong>
+            </td>
+            <td class="nowrap">{{ t.tradeDate | date:'d MMM y' }}</td>
+            <td>
+              <button
+                class="icon-button"
+                [attr.aria-label]="'Delete '+t.type+' '+t.instrument+' transaction on '+t.tradeDate"
+                (click)="confirmTransaction(t)"
+              >
+                <ft-icon name="trash" />
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="table-pagination">
+      <span
+        >{{ (page()-1)*pageSize+1 }}–{{ (page()-1)*pageSize+rows().length }} of {{ filtered().length
+        }} transactions</span
+      >
+      <div>
+        <button
+          class="button secondary small-button"
+          [disabled]="page()===1"
+          (click)="page.set(page()-1)"
+        >
+          Previous</button
+        ><span>{{ page() }} / {{ pages() }}</span
+        ><button
+          class="button secondary small-button"
+          [disabled]="page()===pages()"
+          (click)="page.set(page()+1)"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+    }
+  </div>
+  }@else{
+  <div role="tabpanel" id="holdings-panel" aria-labelledby="holdings-tab">
+    @if(!s.holdings.length){
+    <div class="empty">
+      <h3>No open positions yet</h3>
+      <p>Record a buy transaction to see your current holdings here.</p>
+      <button class="button primary" (click)="adding.set(true)">Record transaction</button>
+    </div>
+    }@else{
+    <div class="table-scroll">
+      <table>
+        <caption class="sr-only">
+          Current holdings in {{ p.baseCurrency }}
+        </caption>
+        <thead>
+          <tr>
+            <th>Instrument</th>
+            <th class="numeric">Net quantity</th>
+            <th class="numeric">Average cost</th>
+            <th class="numeric">Total invested</th>
+            <th class="numeric">Total value</th>
+            <th class="numeric">Unrealized return</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for(h of s.holdings;track h.instrument){
+          <tr>
+            <td><strong>{{ h.instrument }}</strong></td>
+            <td class="numeric">{{ number(h.netQuantity) }}</td>
+            <td class="numeric">{{ money(h.averageCost,p.baseCurrency) }}</td>
+            <td class="numeric">{{ money(h.totalInvested,p.baseCurrency) }}</td>
+            <td class="numeric"><strong>{{ money(h.totalValue,p.baseCurrency) }}</strong></td>
+            <td
+              class="numeric"
+              [class.positive]="h.unrealizedGain>=0"
+              [class.negative]="h.unrealizedGain<0"
+            >
+              {{ signedMoney(h.unrealizedGain,p.baseCurrency) }}
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    }
+  </div>
+  }
+  <div class="valuation-note">
+    <ft-icon name="info" />Amounts in {{ p.baseCurrency }}. Holdings use moving-average cost. Value
+    uses the latest recorded trade price.
+  </div>
+</section>
+<div class="detail-bottom">
+  <a routerLink="/portfolios" class="text-link">Back to portfolios</a
+  ><button class="text-button destructive" (click)="deleteError.set('');deletePortfolio.set(true)">
+    <ft-icon name="trash" />Delete portfolio
+  </button>
+</div>
+} @if(edit()){<ft-portfolio-dialog
+  [portfolio]="p"
+  (closed)="edit.set(false)"
+  (saved)="savedPortfolio()"
+/>} @if(adding()){<ft-transaction-dialog
+  [portfolioId]="p.id"
+  [currency]="p.baseCurrency"
+  [holdings]="summary()?.holdings || []"
+  (closed)="adding.set(false)"
+  (saved)="savedTransaction()"
+/>} @if(deletePortfolio() || deleting()){<ft-dialog
+  (closed)="!deleteBusy() && deletePortfolio.set(false);!deleteBusy() && deleting.set(null)"
+  ><h2 dialog-title>
+    {{ deletePortfolio() ? 'Delete this portfolio?' : 'Delete this transaction?' }}
+  </h2>
+  <p class="dialog-intro">
+    @if(deletePortfolio()){<strong>{{ p.name }}</strong> and all its transactions will be
+    permanently deleted.}@else{This {{ deleting()?.type }} transaction for
+    <strong>{{ deleting()?.instrument }}</strong> will be removed and holdings recalculated.
+    Deletion is rejected if it would leave a sell without enough holdings.} This cannot be undone.
+  </p>
+  @if(deleteError()){
+  <p class="form-error" role="alert">{{ deleteError() }}</p>
+  }
+  <div class="dialog-actions">
+    <button
+      class="button secondary"
+      [disabled]="deleteBusy()"
+      (click)="deletePortfolio.set(false);deleting.set(null)"
+    >
+      Cancel</button
+    ><button class="button danger" [disabled]="deleteBusy()" (click)="remove()">
+      {{ deleteBusy() ? 'Deleting…' : 'Delete permanently' }}
+    </button>
+  </div></ft-dialog
+>} }

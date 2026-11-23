@@ -12,3 +12,4 @@ backend/data/*
 .DS_Store
 playwright-report/
 test-results/
+out-tsc/

@@ -1,0 +1,330 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">{{ portfolioView ? 'YOUR INVESTMENT WORKSPACE' : 'THE BIG PICTURE' }}</p>
+    <h1>{{ portfolioView ? 'Portfolios' : 'Portfolio overview' }}</h1>
+    <p>
+      {{ portfolioView ? 'Every client. Every investment. In one place.' : 'A little perspective for
+      your next big decision.' }}
+    </p>
+  </div>
+  <button class="button primary" (click)="editor.set(null)">
+    <ft-icon name="plus" />Create portfolio
+  </button>
+</section>
+@if(notice()){
+<div class="success-notice" role="status">
+  <ft-icon name="check" />{{ notice() }}<button
+    class="icon-button"
+    aria-label="Dismiss notification"
+    (click)="notice.set('')"
+  >
+    <ft-icon name="close" />
+  </button>
+</div>
+} @if(loading()){
+<div class="loading-state" role="status">
+  <span class="spinner"></span>Loading your investment workspace…
+</div>
+<div class="skeleton-grid" aria-hidden="true">
+  <div></div>
+  <div></div>
+  <div></div>
+</div>
+} @else if(error()){
+<div class="error-state" role="alert">
+  <ft-icon name="info" />
+  <h2>We couldn't load your portfolios</h2>
+  <p>{{ error() }}</p>
+  <button class="button secondary" (click)="load()"><ft-icon name="refresh" />Try again</button>
+</div>
+} @else{ @if(!portfolioView){
+<section class="welcome-banner">
+  <div>
+    <span class="eyebrow light">INVEST WITH PERSPECTIVE</span>
+    <h2>A clearer view.<br />A more confident next move.</h2>
+    <p>
+      Welcome back, {{ auth.user()?.name?.split(' ')?.[0] }}. Here's where your investments stand.
+    </p>
+  </div>
+  <div class="banner-visual" aria-hidden="true">
+    <div class="banner-circle"></div>
+    <div class="banner-bar b1"></div>
+    <div class="banner-bar b2"></div>
+    <div class="banner-bar b3"></div>
+    <div class="banner-bar b4"></div>
+    <div class="banner-line"></div>
+  </div>
+  <span class="banner-date"><ft-icon name="clock" />{{ today | date:'d MMM y':'+0300' }}</span>
+</section>
+}
+<div class="section-toolbar">
+  <div>
+    <h2>{{ portfolioView ? 'Portfolio snapshot' : 'At a glance' }}</h2>
+    <span class="muted"
+      >{{ inCurrency().length }} {{ currency() }} {{ inCurrency().length===1 ? 'portfolio' :
+      'portfolios' }} · currencies kept separate</span
+    >
+  </div>
+  <label class="currency-control"
+    ><span>Base currency</span
+    ><select [ngModel]="currency()" (ngModelChange)="setCurrency($event)">
+      <option value="KES">KES</option>
+      <option value="USD">USD</option>
+    </select></label
+  >
+</div>
+<section class="metrics" aria-label="Portfolio totals">
+  <article class="metric-card">
+    <div class="metric-label">
+      Total portfolio value <span class="metric-icon"><ft-icon name="wallet" /></span>
+    </div>
+    <strong>{{ money(total(),currency()) }}</strong
+    ><span class="metric-foot">Across {{ inCurrency().length }} {{ currency() }} portfolios</span>
+  </article>
+  <article class="metric-card">
+    <div class="metric-label">
+      Capital invested <span class="metric-icon"><ft-icon name="briefcase" /></span>
+    </div>
+    <strong>{{ money(invested(),currency()) }}</strong
+    ><span class="metric-foot">Cost basis of current holdings</span>
+  </article>
+  <article class="metric-card">
+    <div class="metric-label">
+      Unrealized return <span class="metric-icon"><ft-icon name="chart" /></span>
+    </div>
+    <strong [class.positive]="gain()>=0" [class.negative]="gain()<0"
+      >{{ signedMoney(gain(),currency()) }}</strong
+    ><span class="metric-foot"
+      ><span [class.positive]="gain()>=0" [class.negative]="gain()<0"
+        >{{ percentage(gain(),invested()) }}</span
+      >
+      on current holdings</span
+    >
+  </article>
+</section>
+<section class="panel portfolio-panel">
+  <div class="panel-heading">
+    <div>
+      <h2>
+        {{ portfolioView ? 'Your portfolios' : 'Portfolio collection' }}
+        <span class="count">{{ inCurrency().length }}</span>
+      </h2>
+      <p>Client investments at a glance.</p>
+    </div>
+    <label class="search-input"
+      ><ft-icon name="search" /><span class="sr-only">Search portfolios by name or client</span
+      ><input
+        type="search"
+        placeholder="Search portfolios…"
+        [ngModel]="query()"
+        (ngModelChange)="query.set($event)"
+    /></label>
+  </div>
+  @if(!inCurrency().length){
+  <div class="empty">
+    <span class="empty-icon"><ft-icon name="wallet" /></span>
+    <h3>Room for a new perspective</h3>
+    <p>
+      Create your first {{ currency() }} portfolio, then record a trade to start tracking its
+      holdings.
+    </p>
+    <button class="button primary" (click)="editor.set(null)">
+      <ft-icon name="plus" />Create portfolio
+    </button>
+  </div>
+  } @else if(!filtered().length){
+  <div class="empty compact">
+    <h3>No matching portfolios</h3>
+    <p>Try another portfolio or client name.</p>
+    <button class="button secondary" (click)="query.set('')">Clear search</button>
+  </div>
+  } @else if(portfolioView){
+  <div class="portfolio-cards">
+    @for(p of filtered();track p.id){
+    <article class="portfolio-card">
+      <div class="portfolio-card-top">
+        <span class="instrument-avatar"><ft-icon name="wallet" /></span
+        ><span class="currency-pill">{{ p.baseCurrency }}</span>
+      </div>
+      <a [routerLink]="['/portfolios',p.id]" class="portfolio-card-title">{{ p.name }}</a>
+      <p>{{ p.clientName }}</p>
+      <small>Portfolio value</small><strong>{{ money(p.totalValue,p.baseCurrency) }}</strong
+      ><span [class.positive]="p.unrealizedGain>=0" [class.negative]="p.unrealizedGain<0"
+        >{{ signedMoney(p.unrealizedGain,p.baseCurrency) }} ({{
+        percentage(p.unrealizedGain,p.totalInvested) }})</span
+      >
+      <div class="portfolio-card-bottom">
+        <span>{{ p.holdingsCount }} instruments · {{ p.transactionCount }} trades</span>
+        <div class="table-actions">
+          <button class="icon-button" [attr.aria-label]="'Edit '+p.name" (click)="editor.set(p)">
+            <ft-icon name="edit" /></button
+          ><button
+            class="icon-button"
+            [attr.aria-label]="'Delete '+p.name"
+            (click)="confirmDelete(p)"
+          >
+            <ft-icon name="trash" />
+          </button>
+        </div>
+      </div>
+    </article>
+    }
+  </div>
+  } @else{
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Portfolio / Client</th>
+          <th>Currency</th>
+          <th class="numeric">Portfolio value</th>
+          <th class="numeric">Unrealized return</th>
+          <th class="numeric">Instruments</th>
+          <th><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for(p of filtered();track p.id){
+        <tr>
+          <td>
+            <div class="portfolio-cell">
+              <span class="instrument-avatar"><ft-icon name="wallet" /></span>
+              <div>
+                <a [routerLink]="['/portfolios',p.id]">{{ p.name }}</a
+                ><small>{{ p.clientName }}</small>
+              </div>
+            </div>
+          </td>
+          <td><span class="currency-pill">{{ p.baseCurrency }}</span></td>
+          <td class="numeric"><strong>{{ money(p.totalValue,p.baseCurrency) }}</strong></td>
+          <td class="numeric">
+            <span [class.positive]="p.unrealizedGain>=0" [class.negative]="p.unrealizedGain<0"
+              >{{ percentage(p.unrealizedGain,p.totalInvested) }}</span
+            >
+          </td>
+          <td class="numeric">{{ p.holdingsCount }}</td>
+          <td>
+            <div class="table-actions">
+              <button
+                class="icon-button"
+                [attr.aria-label]="'Edit '+p.name"
+                (click)="editor.set(p)"
+              >
+                <ft-icon name="edit" /></button
+              ><button
+                class="icon-button"
+                [attr.aria-label]="'Delete '+p.name"
+                (click)="confirmDelete(p)"
+              >
+                <ft-icon name="trash" /></button
+              ><a
+                class="icon-button"
+                [routerLink]="['/portfolios',p.id]"
+                [attr.aria-label]="'Open '+p.name"
+                ><ft-icon name="chevron"
+              /></a>
+            </div>
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <a routerLink="/portfolios" class="panel-footer-link"
+    >View all portfolios <ft-icon name="chevron" /></a
+  >}
+</section>
+@if(!portfolioView && featured();as p){
+<section class="dashboard-lower">
+  <article class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Asset allocation</h2>
+        <p>A closer look at your portfolio mix.</p>
+      </div>
+      <label class="sr-only" for="spotlight">Select portfolio for allocation and activity</label
+      ><select
+        id="spotlight"
+        class="compact-select"
+        [ngModel]="p.id"
+        (ngModelChange)="changeSpotlight($event)"
+      >
+        @for(item of inCurrency();track item.id){
+        <option [value]="item.id">{{ item.name }}</option>
+        }
+      </select>
+    </div>
+    @if(featuredLoading()){
+    <div class="loading-state" role="status"><span class="spinner"></span>Loading allocation…</div>
+    }@else if(featuredError()){
+    <div class="error-state compact" role="alert">
+      <p>{{ featuredError() }}</p>
+      <button class="button secondary" (click)="loadFeatured()">Try again</button>
+    </div>
+    }@else if(summary();as s){<ft-allocation [holdings]="s.holdings" [currency]="p.baseCurrency" />}
+    <div class="valuation-note">
+      <ft-icon name="info" />Illustrative value uses the latest recorded trade price.
+    </div>
+  </article>
+  <article class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Recent activity</h2>
+        <p>{{ p.name }}</p>
+      </div>
+      <a class="text-link" [routerLink]="['/portfolios',p.id]">View trades</a>
+    </div>
+    @if(featuredLoading()){
+    <div class="loading-state" role="status">
+      <span class="spinner"></span>Loading transactions…
+    </div>
+    }@else if(featuredError()){
+    <div class="empty compact"><p>Activity is unavailable until the API request succeeds.</p></div>
+    }@else if(!transactions().length){
+    <div class="empty compact">
+      <span class="empty-icon"><ft-icon name="swap" /></span>
+      <h3>No trades just yet</h3>
+      <p>Record your first transaction in this portfolio.</p>
+    </div>
+    }@else{
+    <ul class="activity-list">
+      @for(tx of transactions().slice(0,4);track tx.id){
+      <li>
+        <span class="activity-icon"><ft-icon name="swap" /></span
+        ><span class="activity-description"
+          ><strong
+            >{{ tx.instrument }}
+            <span class="trade-badge" [class.sell]="tx.type==='SELL'">{{ tx.type }}</span></strong
+          ><small
+            >{{ number(tx.quantity) }} units · {{ tx.tradeDate | date:'d MMM y' }}</small
+          ></span
+        ><strong class="activity-amount"
+          >{{ money(tx.quantity*tx.unitPrice,p.baseCurrency) }}</strong
+        >
+      </li>
+      }
+    </ul>
+    }
+  </article>
+</section>
+} } @if(editor()!==undefined){<ft-portfolio-dialog
+  [portfolio]="editor() || null"
+  (closed)="editor.set(undefined)"
+  (saved)="saved($event)"
+/>} @if(deleting();as p){<ft-dialog (closed)="!deleteBusy() && deleting.set(null)"
+  ><h2 dialog-title>Delete this portfolio?</h2>
+  <p class="dialog-intro">
+    <strong>{{ p.name }}</strong> and all {{ p.transactionCount }} transactions will be permanently
+    deleted. This cannot be undone.
+  </p>
+  @if(deleteError()){
+  <p class="form-error" role="alert">{{ deleteError() }}</p>
+  }
+  <div class="dialog-actions">
+    <button class="button secondary" [disabled]="deleteBusy()" (click)="deleting.set(null)">
+      Keep portfolio</button
+    ><button class="button danger" [disabled]="deleteBusy()" (click)="remove()">
+      {{ deleteBusy() ? 'Deleting…' : 'Delete portfolio' }}
+    </button>
+  </div></ft-dialog
+>}
