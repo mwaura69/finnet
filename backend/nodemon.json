@@ -1,0 +1,13 @@
+{
+  "watch": [
+    "src"
+  ],
+  "ext": "ts,json,sql",
+  "ignore": [
+    "data/**",
+    "tests/**"
+  ],
+  "exec": "tsx src/server.ts",
+  "signal": "SIGTERM",
+  "legacyWatch": true
+}

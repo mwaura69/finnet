@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import { register, login } from './auth.controller.js';
+import { registerSchema, loginSchema } from './auth.schema.js';
+import { validate } from '../../../middleware/validate.middleware.js';
+import { authRateLimit } from '../../../middleware/rateLimit.middleware.js';
+import { requireAuth } from '../../../middleware/auth.middleware.js';
+import { me } from '../users/user.controller.js';
+export const authRouter = Router();
+authRouter.post('/register', authRateLimit, validate(registerSchema), register);
+authRouter.post('/login', authRateLimit, validate(loginSchema), login);
+authRouter.get('/me', requireAuth, me);
