@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.angular/
+coverage/
+.env
+.env.*
+!.env.example
+backend/data/*
+!backend/data/.gitkeep
+*.sqlite*
+*.log
+.DS_Store
+playwright-report/
+test-results/
