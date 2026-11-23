@@ -1,0 +1,50 @@
+# Local demo only. No business service is wired for production yet.
+services:
+  seed:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ['node', 'dist/db/seeds/index.js']
+    environment:
+      DATABASE_PATH: /app/backend/data/fintrack.sqlite
+    volumes:
+      - fintrack-data:/app/backend/data
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      NODE_ENV: development
+      DEMO_MODE: 'true'
+      PORT: 3000
+      DATABASE_PATH: /app/backend/data/fintrack.sqlite
+      FRONTEND_ORIGIN: http://localhost:8080
+    volumes:
+      - fintrack-data:/app/backend/data
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  web:
+    build:
+      context: .
+      dockerfile: Frontend/Dockerfile
+    ports:
+      - '127.0.0.1:8080:80'
+    depends_on:
+      api:
+        condition: service_healthy
+volumes:
+  fintrack-data:
