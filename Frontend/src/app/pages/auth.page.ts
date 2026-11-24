@@ -123,7 +123,7 @@ export class AuthPage implements AfterViewInit {
       const result = await this.auth.google({
         credential,
         stayLoggedIn: this.stayLoggedIn,
-        ...(this.acceptTerms ? { acceptTerms: true as const } : {}),
+        acceptTerms: true,
       });
       await this.router.navigateByUrl('requiresMfa' in result ? '/mfa' : '/');
     } catch (error) {

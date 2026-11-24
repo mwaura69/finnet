@@ -112,6 +112,10 @@
   </form>
   <div class="google-divider">or</div>
   <div class="google-login">
+    <p class="provider-note">
+      By continuing with Google, you agree to the
+      <a routerLink="/terms" target="_blank" rel="noopener">terms and conditions</a>.
+    </p>
     <div #googleButton class="google-button-host" [attr.aria-busy]="googleLoading()"></div>
     @if(googleError() || googleLoading()){<button
       type="button"
