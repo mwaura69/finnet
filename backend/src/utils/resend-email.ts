@@ -10,6 +10,7 @@ export async function sendResendEmail(
 ) {
   if (!settings.apiKey)
     throw new ApiError(503, 'EMAIL_NOT_CONFIGURED', 'Email delivery is not configured.');
+  let stage: 'request' | 'response' = 'request';
   try {
     const response = await request('https://api.resend.com/emails', {
       method: 'POST',
@@ -27,6 +28,7 @@ export async function sendResendEmail(
         html: message.html,
       }),
     });
+    stage = 'response';
     if (!response.ok) {
       // Provider error bodies may contain addresses or message content. Log status only.
       logger.warn(
@@ -36,8 +38,11 @@ export async function sendResendEmail(
       throw new ApiError(
         503,
         'EMAIL_DELIVERY_FAILED',
-        response.status === 401 || response.status === 403 || response.status === 422
-          ? 'Email provider rejected delivery. The administrator must check the API key and verified sender domain.'
+        response.status === 400 ||
+          response.status === 401 ||
+          response.status === 403 ||
+          response.status === 422
+          ? 'Email provider rejected delivery. The administrator must check the API key, sender address format and verified sender domain.'
           : 'Email delivery is temporarily unavailable. Please try again.',
       );
     }
@@ -53,7 +58,35 @@ export async function sendResendEmail(
     return { messageId: payload.id, delivery: 'resend' as const };
   } catch (error) {
     if (error instanceof ApiError) throw error;
-    logger.warn({ provider: 'resend' }, 'Email provider request failed');
+    const candidate = error as {
+      name?: unknown;
+      code?: unknown;
+      cause?: { code?: unknown };
+    } | null;
+    const rawCode = candidate?.cause?.code || candidate?.code;
+    const code =
+      typeof rawCode === 'string' &&
+      [
+        'ENOTFOUND',
+        'EAI_AGAIN',
+        'ETIMEDOUT',
+        'ECONNRESET',
+        'ECONNREFUSED',
+        'UND_ERR_CONNECT_TIMEOUT',
+        'UND_ERR_HEADERS_TIMEOUT',
+        'UND_ERR_SOCKET',
+        'CERT_HAS_EXPIRED',
+        'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+      ].includes(rawCode)
+        ? rawCode
+        : undefined;
+    const reason =
+      candidate?.name === 'TimeoutError' || candidate?.name === 'AbortError'
+        ? 'timeout'
+        : stage === 'response'
+          ? 'invalid_response'
+          : 'network';
+    logger.warn({ provider: 'resend', stage, reason, code }, 'Email provider request failed');
     throw new ApiError(
       503,
       'EMAIL_DELIVERY_FAILED',

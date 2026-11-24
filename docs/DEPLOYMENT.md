@@ -82,3 +82,11 @@ Requests time out after 15 seconds. Provider rejections return sanitized errors;
 Run `node dist/db/seeds/index.js` from the backend working directory against the running service's actual database, with `DEMO_EMAIL` and `DEMO_PASSWORD` set as desired. The seed preserves existing accounts and passwords. It must run against the same database used by the API; seeding only during the build does not ensure the running instance has that database. Do not enable development DEMO_MODE in production.
 
 Render Free has no persistent disk. This project's SQLite database can disappear on redeploy/restart, including accounts and transactions. Keep a persistent-disk service or migrate the database to a persistent hosted database before relying on retained data. See [Render Free limitations](https://render.com/docs/free).
+
+### Resend delivery troubleshooting
+
+- In Render's individual environment value editor, enter `FinTrack <address@verified-domain>` as MAIL_FROM without surrounding quote characters or backslashes. Quotes used in a `.env` file are parsed by dotenv; quotes typed into a hosting dashboard value can become literal characters.
+- Verify the exact sending domain (or subdomain) in the Resend account associated with the sending key. The sender mailbox does not need its own inbox. A key restricted to one domain must permit that domain.
+- Confirm `/api/v1/auth/config` reports `emailDelivery: "resend"` after deployment. SMTP settings have no effect in this mode.
+- Render logs distinguish provider rejections (HTTP status only) from network, timeout and invalid-response failures. HTTP 400, 401, 403 and 422 are surfaced as provider configuration failures. Unknown failures remain sanitized. Share only provider/status/reason/code fields for support, never credentials or message bodies.
+- After correcting delivery, use Resend verification for a previously registered account. Rotate any credentials shared in public or chat and update them directly in the hosting dashboard.

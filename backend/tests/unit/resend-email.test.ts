@@ -36,7 +36,7 @@ test('HTTPS transport sends both email formats with credentials server-side and 
   assert.equal(result.messageId, 'provider-message-id');
 });
 test('HTTPS provider failures are sanitized, including rate limits, invalid keys and broken responses', async () => {
-  for (const status of [401, 403, 422, 429, 500]) {
+  for (const status of [400, 401, 403, 422, 429, 500]) {
     await assert.rejects(
       sendResendEmail(
         message,
@@ -89,5 +89,32 @@ test('production allows a configured HTTPS mail provider and rejects missing key
       SMTP_HOST: 'smtp.example.test',
     }).success,
     true,
+  );
+});
+
+test('HTTP 400 identifies provider configuration errors without disclosing provider response data', async () => {
+  await assert.rejects(
+    sendResendEmail(
+      message,
+      settings,
+      async () => new Response('private-token re_test_only', { status: 400 }),
+    ),
+    (error: unknown) => {
+      failure(error);
+      assert.match((error as Error).message, /sender address format/);
+      return true;
+    },
+  );
+  await assert.rejects(
+    sendResendEmail(message, settings, async () => {
+      throw new DOMException('private-token', 'TimeoutError');
+    }),
+    failure,
+  );
+  await assert.rejects(
+    sendResendEmail(message, settings, async () => {
+      throw new Error('private-token', { cause: { code: 'ENOTFOUND' } });
+    }),
+    failure,
   );
 });
