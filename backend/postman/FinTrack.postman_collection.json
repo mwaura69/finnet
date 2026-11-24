@@ -1,0 +1,1818 @@
+{
+  "info": {
+    "_postman_id": "73d83fbb-a6a9-4b5e-9b6a-935a821c7a58",
+    "name": "FinTrack \u2014 Finnet Backend API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Complete collection built from the implemented Express routes, not only the OpenAPI index.\n\nQUICK START\n1. Import the collection and select the Render or Local environment (optional; collection defaults to Render).\n2. Set email/password locally in Postman. Keep the cookie jar enabled. There is no Bearer token to copy: login sets ft_access and ft_refresh HttpOnly cookies.\n3. Existing verified account: send Login. If requiresMfa=true, enter mfaCode then send Verify MFA challenge. New account: Register, open your actual inbox, copy token into verificationToken, Verify email, then Login.\n4. Create portfolio captures portfolioId; Create BUY/SELL capture IDs. Test summaries/receipts/exports afterwards.\n\nCSRF: a collection pre-request script gets a signed token before every mutation and adds X-CSRF-Token. Origin matches frontendOrigin. Cookie jar must retain the matching ft_csrf cookie. Use Postman Desktop/Desktop Agent for localhost. Render Free cold starts may require a request timeout of at least 60 seconds.\n\nEmail/Google/MFA require functioning providers. Generic 200 responses from resend/forgot-password do not prove an account exists or an email arrived. Manually paste tokens/codes from real emails; this collection cannot read your inbox or complete Google account selection. Configure googleIdToken with a fresh credential obtained through your app.\n\nSend requests individually. This collection includes real account changes, permission changes and deletes; it is a route reference, not a safe whole-collection production runner. Mutation requests can send actual notifications. Use a test account and fictional portfolio data.\n\nSensitive variables are intentionally blank. Do not save API keys/JWT secrets/SMTP credentials here. Session cookies and runtime token values are private; clear them before exporting a used collection."
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://finnet.onrender.com",
+      "type": "string",
+      "description": "No trailing slash. Use localhost environment for local development."
+    },
+    {
+      "key": "apiPath",
+      "value": "/api/v1",
+      "type": "string",
+      "description": "Canonical prefix. /api is a compatibility alias."
+    },
+    {
+      "key": "frontendOrigin",
+      "value": "https://finnet-nexus.netlify.app",
+      "type": "string",
+      "description": "Must equal backend FRONTEND_ORIGIN when Origin is sent."
+    },
+    {
+      "key": "email",
+      "value": "",
+      "type": "string",
+      "description": "Your test account email; not supplied in this export."
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "string",
+      "description": "Current login or signup password. At least 8 mixed characters for signup."
+    },
+    {
+      "key": "newPassword",
+      "value": "",
+      "type": "string",
+      "description": "New password for reset/set/change. At least 8 mixed characters."
+    },
+    {
+      "key": "displayName",
+      "value": "Postman Analyst",
+      "type": "string",
+      "description": "Fictional signup/profile example."
+    },
+    {
+      "key": "verificationToken",
+      "value": "",
+      "type": "string",
+      "description": "Token query parameter from confirmation email URL."
+    },
+    {
+      "key": "resetToken",
+      "value": "",
+      "type": "string",
+      "description": "Token from password-reset email URL."
+    },
+    {
+      "key": "setPasswordToken",
+      "value": "",
+      "type": "string",
+      "description": "Token from set-password email URL."
+    },
+    {
+      "key": "googleIdToken",
+      "value": "",
+      "type": "string",
+      "description": "Fresh Google Identity Services ID token, not an access token. Audience must match backend GOOGLE_CLIENT_ID."
+    },
+    {
+      "key": "mfaCode",
+      "value": "",
+      "type": "string",
+      "description": "Six-digit email code; enter as a string to preserve leading zeroes."
+    },
+    {
+      "key": "challengeId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-captured from login, Google login or enabling MFA."
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-captured from authenticated session/current user."
+    },
+    {
+      "key": "portfolioId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-captured on portfolio creation."
+    },
+    {
+      "key": "portfolioName",
+      "value": "Postman Growth",
+      "type": "string",
+      "description": "Portfolio name, 2\u2013100 characters."
+    },
+    {
+      "key": "clientName",
+      "value": "Example Client",
+      "type": "string",
+      "description": "Fictional client name, 2\u2013100 characters."
+    },
+    {
+      "key": "baseCurrency",
+      "value": "KES",
+      "type": "string",
+      "description": "KES or USD. Cannot change after first transaction."
+    },
+    {
+      "key": "transactionId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-captured on the latest created transaction; used by receipt/delete."
+    },
+    {
+      "key": "buyTransactionId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-captured on BUY creation."
+    },
+    {
+      "key": "sellTransactionId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-captured on SELL creation."
+    },
+    {
+      "key": "memberUserId",
+      "value": "",
+      "type": "string",
+      "description": "Existing target user ID for portfolio membership operations; do not use your own userId."
+    },
+    {
+      "key": "memberEmail",
+      "value": "",
+      "type": "string",
+      "description": "Existing verified target account email."
+    },
+    {
+      "key": "csrfToken",
+      "value": "",
+      "type": "string",
+      "description": "Auto-loaded before mutations. Do not fill manually."
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Cookie-based authentication: keep Postman's cookie jar enabled.",
+          "const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Nairobi', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());",
+          "pm.variables.set('today', date);",
+          "const origin = pm.variables.get('frontendOrigin');",
+          "if (origin) pm.request.headers.upsert({ key: 'Origin', value: origin });",
+          "if (!['GET', 'HEAD', 'OPTIONS'].includes(pm.request.method)) {",
+          "  const url = pm.variables.replaceIn('{{baseUrl}}{{apiPath}}/auth/csrf');",
+          "  pm.sendRequest({ url, method: 'GET', header: origin ? { Origin: origin } : {} }, (error, response) => {",
+          "    if (error || !response || response.code !== 200) {",
+          "      pm.execution.skipRequest();",
+          "      throw new Error('CSRF initialization failed. Check the base URL, backend availability and cookie jar.');",
+          "    }",
+          "    const token = response.json().data && response.json().data.csrfToken;",
+          "    if (!token) { pm.execution.skipRequest(); throw new Error('CSRF response did not include a token.'); }",
+          "    pm.collectionVariables.set('csrfToken', token);",
+          "    pm.request.headers.upsert({ key: 'X-CSRF-Token', value: token });",
+          "  });",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Capture MFA challenges; Postman manages HttpOnly access/refresh cookies automatically.",
+          "if (pm.response.code >= 200 && pm.response.code < 300) {",
+          "  let payload;",
+          "  try { payload = pm.response.json(); } catch (_) { payload = null; }",
+          "  const data = payload && payload.data;",
+          "  if (data && data.challengeId) pm.collectionVariables.set('challengeId', data.challengeId);",
+          "  if (data && data.user && data.user.id) pm.collectionVariables.set('userId', data.user.id);",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 \u2014 Service and documentation",
+      "description": "",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/health",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Authentication configuration",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/config",
+            "description": "Reports Google client ID and delivery transport, never provider secrets."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Initialize CSRF",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/csrf",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "pm.collectionVariables.set('csrfToken', pm.response.json().data.csrfToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "OpenAPI JSON",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/openapi.json",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Swagger UI",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/html"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/docs/",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "01 \u2014 Sign up and email verification",
+      "description": "",
+      "item": [
+        {
+          "name": "Register account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/register",
+            "description": "Creates an account and sends confirmation email. A delivery failure can leave an unverified account; use Resend verification rather than registering again.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{displayName}}\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"acceptTerms\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Resend verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/resend-verification",
+            "description": "Generic 200 for unknown/already-verified accounts. Does not prove delivery.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Verify email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/verify-email",
+            "description": "Paste token from the verification URL, not the whole URL. Single-use, 24-hour expiry.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{verificationToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 \u2014 Sign in and sessions",
+      "description": "",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/login",
+            "description": "Cookie jar stores sessions. If data.requiresMfa=true, run MFA verification before protected requests.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"stayLoggedIn\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Google sign in or create account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/google",
+            "description": "Fresh Google ID token required. Existing password accounts are not linked automatically. acceptTerms=true is included as in the frontend.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"credential\": \"{{googleIdToken}}\",\n  \"stayLoggedIn\": true,\n  \"acceptTerms\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Current authenticated session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/me",
+            "description": "Requires the ft_access cookie; no Authorization header."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Refresh session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/refresh",
+            "description": "Rotates refresh cookies. Reusing an old refresh token revokes its session; keep the cookie jar enabled.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 \u2014 Email MFA",
+      "description": "",
+      "item": [
+        {
+          "name": "Verify MFA challenge",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/mfa/verify",
+            "description": "For sign-in challenges, successful verification sets session cookies. Also confirms enabling MFA.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{challengeId}}\",\n  \"code\": \"{{mfaCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Resend MFA code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/mfa/resend",
+            "description": "60-second resend cooldown; use the code from the latest email.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{challengeId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 \u2014 Password recovery and account actions",
+      "description": "",
+      "item": [
+        {
+          "name": "Forgot password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/forgot-password",
+            "description": "Verified accounts receive reset/set link. Public response is generic.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Reset password with email token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/reset-password",
+            "description": "Single-use email token, 30-minute expiry. Revokes existing sessions; log in again afterwards.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"password\": \"{{newPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Request set-password link",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/request-set-password",
+            "description": "Authenticated Google-only account without a password. Sends a link; may reject an account that already has a password.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Set password with email token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/set-password",
+            "description": "Uses the set-password token from email. Log in again afterwards.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{setPasswordToken}}\",\n  \"password\": \"{{newPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Change password while signed in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/change-password",
+            "description": "Requires current password. Revokes sessions and clears cookies. This request changes credentials.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"password\": \"{{newPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 \u2014 Profile and notification preferences",
+      "description": "",
+      "item": [
+        {
+          "name": "Get profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/users/me",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "pm.collectionVariables.set('userId', pm.response.json().data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update name and onboarding",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/users/me",
+            "description": "Optional avatarUrl accepts a PNG/JPEG/WebP base64 data URL (max decoded size 1 MB), or null. Other profile fields are rejected.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{displayName}}\",\n  \"onboardingCompleted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Remove profile image",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/users/me",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"avatarUrl\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update notification preferences",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/users/me/preferences",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionEmails\": true,\n  \"productEmails\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Enable email MFA \u2014 request challenge",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/users/me/preferences",
+            "description": "Auto-captures challengeId. Enter mfaCode and run Verify MFA challenge to finish enabling MFA.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailMfaEnabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Disable email MFA",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/users/me/preferences",
+            "description": "Requires recent MFA or valid current password. Changes account security preference.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailMfaEnabled\": false,\n  \"currentPassword\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 \u2014 Portfolios and summary",
+      "description": "",
+      "item": [
+        {
+          "name": "Create portfolio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{portfolioName}}\",\n  \"clientName\": \"{{clientName}}\",\n  \"baseCurrency\": \"{{baseCurrency}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) {",
+                  "pm.collectionVariables.set('portfolioId', pm.response.json().data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List accessible portfolios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get portfolio",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update portfolio",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}",
+            "description": "Full body required. Currency cannot change after transactions exist.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{portfolioName}}\",\n  \"clientName\": \"{{clientName}}\",\n  \"baseCurrency\": \"{{baseCurrency}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Holdings and valuation summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}/summary",
+            "description": "Chronological moving-average ledger. Valuation uses latest recorded trade price, not live market prices."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "07 \u2014 Portfolio member permissions",
+      "description": "",
+      "item": [
+        {
+          "name": "List members",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}/members",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Grant write access by email",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}/members",
+            "description": "Owner/admin only. Target account must already exist and be verified. Global viewer role still forbids writes.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{memberEmail}}\",\n  \"permission\": \"write\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Grant read access by user ID",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}/members/{{memberUserId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permission\": \"read\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Revoke member access",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}/members/{{memberUserId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "08 \u2014 Transactions, receipts and Excel",
+      "description": "",
+      "item": [
+        {
+          "name": "Create BUY \u2014 100 SCOM",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}/transactions",
+            "description": "today is computed in Africa/Nairobi before sending. Server trims/uppercases instrument and validates all fields.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instrument\": \"SCOM\",\n  \"type\": \"BUY\",\n  \"quantity\": 100,\n  \"unitPrice\": 25,\n  \"tradeDate\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) {",
+                  "const data = pm.response.json().data; pm.collectionVariables.set('transactionId', data.id); pm.collectionVariables.set('buyTransactionId', data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Create partial SELL \u2014 25 SCOM",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}/transactions",
+            "description": "Run BUY first. Server replays historical ledger and rejects any trade that invalidates a later SELL.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instrument\": \"SCOM\",\n  \"type\": \"SELL\",\n  \"quantity\": 25,\n  \"unitPrice\": 28,\n  \"tradeDate\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) {",
+                  "const data = pm.response.json().data; pm.collectionVariables.set('transactionId', data.id); pm.collectionVariables.set('sellTransactionId', data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}/transactions",
+            "description": "Current list controller returns the full ledger. Filtering/sorting is done by the frontend; export.xlsx supports query filters."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get transaction receipt JSON",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/transactions/{{transactionId}}/receipt",
+            "description": "Receipt data for printing in the frontend. This endpoint returns JSON, not a PDF or tax invoice."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Download Excel workbook",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}/transactions/export.xlsx?instrument=SCOM&type=BUY&sort=tradeDate&direction=desc",
+            "description": "Use Send and Download in Postman. Optional filters: instrument, type, from, to, sort, direction. Dates YYYY-MM-DD; sort: tradeDate/instrument/quantity/unitPrice/amount; direction asc/desc."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "09 \u2014 Validation examples \u2014 optional",
+      "description": "",
+      "item": [
+        {
+          "name": "Reject invalid fields",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}/transactions",
+            "description": "Expect error.details with field/message pairs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instrument\": \"\",\n  \"type\": \"BUY\",\n  \"quantity\": -1,\n  \"unitPrice\": 0,\n  \"tradeDate\": \"2026-02-30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Reject future trade date",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}/transactions",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instrument\": \"SCOM\",\n  \"type\": \"BUY\",\n  \"quantity\": 100,\n  \"unitPrice\": 25,\n  \"tradeDate\": \"9999-12-31\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Reject excessive SELL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}/transactions",
+            "description": "For a test portfolio holding fewer than one billion SCOM. This is a real create request; use only fictional test data.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instrument\": \"SCOM\",\n  \"type\": \"SELL\",\n  \"quantity\": 1000000000,\n  \"unitPrice\": 28,\n  \"tradeDate\": \"{{today}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10 \u2014 Delete and sign out \u2014 run manually",
+      "description": "",
+      "item": [
+        {
+          "name": "Delete transaction",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/transactions/{{transactionId}}",
+            "description": "Deletes selected transaction. Expect 409 instead if removing a BUY leaves a SELL uncovered; delete dependent SELLs first. transactionId tracks the last created trade."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Delete portfolio and its transactions",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/portfolios/{{portfolioId}}",
+            "description": "Deletes this portfolio and all its transactions; may send notifications."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}{{apiPath}}/auth/logout",
+            "description": "Revokes the session and clears its cookies.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -2,6 +2,17 @@ import { createApp } from './app.js';
 import { config } from './config/index.js';
 import { startNotificationWorker } from './api/v1/services.js';
 import { db } from './db/index.js';
+import { seedDemo } from './db/seeds/demo.js';
+import { logger } from './config/logger.js';
+
+if (config.demoAccount.enabled) {
+  const result = seedDemo(db, config.demoAccount);
+  logger.info({ created: result.created }, 'Demo account initialization completed');
+  if (!result.passwordMatches)
+    logger.warn(
+      'Existing demo password differs from DEMO_PASSWORD; existing credentials were preserved.',
+    );
+}
 
 const stopNotifications = startNotificationWorker();
 const server = createApp().listen(config.port, () =>

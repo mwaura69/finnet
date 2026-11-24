@@ -10,7 +10,8 @@
     "start": "node dist/server.js",
     "db:setup": "tsx src/db/seeds/index.ts",
     "test": "tsx --test tests/unit/*.test.ts tests/integration/*.test.ts",
-    "lint": "eslint src tests --ext .ts"
+    "lint": "eslint src tests --ext .ts",
+    "db:setup:prod": "node dist/db/seeds/index.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

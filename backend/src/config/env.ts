@@ -10,6 +10,9 @@ export const environmentSchema = z
     FRONTEND_ORIGIN: z.url().default('http://localhost:4200'),
     JWT_SECRET: z.string().optional(),
     DEMO_MODE: z.enum(['true', 'false']).default('false'),
+    SEED_DEMO_ON_START: z.enum(['true', 'false']).default('false'),
+    DEMO_EMAIL: z.email().default('demo@fintrack.local'),
+    DEMO_PASSWORD: z.string().min(8).default('FinTrackDemo!2026'),
     LOG_LEVEL: z
       .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent'])
       .default('info'),

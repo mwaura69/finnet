@@ -5,6 +5,11 @@ export const config = {
   trustProxyHops: env.TRUST_PROXY_HOPS,
   production: env.NODE_ENV === 'production',
   demo: env.DEMO_MODE === 'true',
+  demoAccount: {
+    enabled: env.SEED_DEMO_ON_START === 'true',
+    email: env.DEMO_EMAIL,
+    password: env.DEMO_PASSWORD,
+  },
   secret: jwtSecret,
   database: env.DATABASE_PATH,
   origin: env.FRONTEND_ORIGIN,
