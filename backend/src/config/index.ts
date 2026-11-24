@@ -30,6 +30,7 @@ export const config = {
   mail: {
     delivery: env.NODE_ENV === 'test' ? 'outbox' : env.MAIL_DELIVERY,
     outboxPath: env.MAIL_OUTBOX_PATH,
+    resendApiKey: env.RESEND_API_KEY,
   },
 };
 export const mfa = config.mfa;

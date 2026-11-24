@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { z } from 'zod';
 import { randomBytes } from 'node:crypto';
-const schema = z
+export const environmentSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -19,7 +19,8 @@ const schema = z
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
     MAIL_FROM: z.string().default('FinTrack <no-reply@fintrack.local>'),
-    MAIL_DELIVERY: z.enum(['smtp', 'outbox']).default('outbox'),
+    MAIL_DELIVERY: z.enum(['smtp', 'resend', 'outbox']).default('outbox'),
+    RESEND_API_KEY: z.string().trim().optional(),
     MAIL_OUTBOX_PATH: z.string().default('./data/outbox'),
     ACCESS_TOKEN_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
     SESSION_IDLE_SECONDS: z.coerce.number().int().min(60).max(86400).default(1800),
@@ -56,15 +57,20 @@ const schema = z
           path: ['MFA_HMAC_SECRET'],
           message: 'Production requires a separate MFA HMAC secret.',
         });
-      if (value.MAIL_DELIVERY !== 'smtp' || !value.SMTP_HOST)
+      if (
+        value.MAIL_DELIVERY === 'outbox' ||
+        (value.MAIL_DELIVERY === 'smtp' && !value.SMTP_HOST) ||
+        (value.MAIL_DELIVERY === 'resend' && !value.RESEND_API_KEY)
+      )
         ctx.addIssue({
           code: 'custom',
           path: ['MAIL_DELIVERY'],
-          message: 'Production authentication requires a configured SMTP delivery transport.',
+          message:
+            'Production requires SMTP_HOST for smtp delivery or RESEND_API_KEY for resend delivery; outbox is development-only.',
         });
     }
   });
-const result = schema.safeParse(process.env);
+const result = environmentSchema.safeParse(process.env);
 if (!result.success)
   throw new Error(
     'Invalid environment: ' +

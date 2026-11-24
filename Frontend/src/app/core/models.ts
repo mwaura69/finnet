@@ -30,7 +30,7 @@ export interface MfaChallenge {
 }
 export interface AuthCapabilities {
   googleClientId: string | null;
-  emailDelivery: 'smtp' | 'outbox';
+  emailDelivery: 'smtp' | 'resend' | 'outbox';
   passwordPolicy: { minLength: number };
 }
 export interface Portfolio {

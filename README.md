@@ -43,7 +43,7 @@ The account extension passed backend and Angular production builds plus ten auto
 
 ## Deployment and remaining validation
 
-No public deployment or hosted PR is claimed. Configure HTTPS, a persistent database volume, strong secrets, exact frontend CORS origin and real provider credentials. Prefer a same-origin `/api` reverse proxy for cookie reliability. Run the actual final tree through desktop/mobile browser QA, verify SMTP/Google against your providers, and review the draft application terms before publication. The manifest supports installation; actual installation depends on the browser and HTTPS. Docker files are supplied; the local daemon was unavailable during the original scaffold check.
+The frontend is deployed at https://finnet-nexus.netlify.app/ and the API at https://finnet.onrender.com. Configure the HTTPS email transport described in docs/DEPLOYMENT.md, persistent database storage, strong secrets, exact frontend CORS origin and real provider credentials. Prefer a same-origin `/api` reverse proxy for cookie reliability. Run the actual final tree through desktop/mobile browser QA, verify SMTP/Google against your providers, and review the draft application terms before publication. The manifest supports installation; actual installation depends on the browser and HTTPS. Docker files are supplied; the local daemon was unavailable during the original scaffold check.
 
 Read [deployment](docs/DEPLOYMENT.md), [Git workflow](docs/GIT_WORKFLOW.md) and [account/security details](docs/SECURITY_AND_ACCOUNT_FLOWS.md). Earlier scaffold screenshots/check notes describe that checkpoint; account-extension browser screenshots have not yet been refreshed.
 
@@ -56,3 +56,7 @@ Creating a portfolio opens its detail page with an Add transaction action. Trade
 The server replays the entire ledger in trade-date order (creation order breaks same-day ties). A SELL must be covered at that point in time, and a backdated trade must leave every later SELL covered. Invalid trade creation returns 422; deleting a trade that invalidates a later SELL returns 409 without changing the ledger. There is no transaction edit endpoint: delete and re-add, subject to these safeguards. Fresh demo seeds include BUYs and partial SELLs in each portfolio; existing demo accounts are preserved by the seed command.
 
 Account emails use `backend/src/utils/email.template.ts` for escaped, table-based HTML with a plain-text alternative. Confirmation/reset/set-password buttons include the same single-use token as the text link. The text wordmark renders without remote images, including in local development. Mail delivery still requires the configured SMTP service or development outbox.
+
+### Render Free email fix
+
+Use `MAIL_DELIVERY=resend`, a backend-only `RESEND_API_KEY`, and `MAIL_FROM` on a verified sender domain. This sends through HTTPS rather than blocked SMTP ports. See [Render setup and verification](docs/DEPLOYMENT.md#email-on-render-free-resend-https-transport). After a failed signup email, use Resend verification once delivery is configured.

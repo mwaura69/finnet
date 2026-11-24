@@ -1,3 +1,4 @@
+import { sendResendEmail } from './resend-email.js';
 import { renderEmail } from './email.template.js';
 import nodemailer from 'nodemailer';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -41,6 +42,9 @@ export async function sendEmail(message: EmailMessage) {
       { mode: 0o600 },
     );
     return { messageId: id, delivery: 'outbox' };
+  }
+  if (config.mail.delivery === 'resend') {
+    return sendResendEmail(message, { apiKey: config.mail.resendApiKey, from: config.smtp.from });
   }
   if (!config.smtp.host)
     throw new ApiError(503, 'EMAIL_NOT_CONFIGURED', 'Email delivery is not configured.');
