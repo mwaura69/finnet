@@ -30,6 +30,14 @@ test('verified cookie sessions, CSRF, profile, ledger, Excel, receipts, MFA and 
   const token = new URL(mail.at(-1)!.text.match(/https?:\/\/\S+/)![0]).searchParams.get('token');
   await post('/auth/verify-email', { token }).expect(200);
   await post('/auth/verify-email', { token }).expect(400);
+  const sentCount = mail.length;
+  await post('/auth/resend-verification', { email: 'missing@example.test' }).expect(200);
+  await post('/auth/resend-verification', { email: 'test@example.test' }).expect(200);
+  assert.equal(
+    mail.length,
+    sentCount,
+    'Unknown and already verified accounts must not receive verification tokens',
+  );
   const login = await post('/auth/login', {
     email: 'test@example.test',
     password: 'Test123!',

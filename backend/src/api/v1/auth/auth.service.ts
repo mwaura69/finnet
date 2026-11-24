@@ -90,6 +90,7 @@ export class AuthService {
 
   private async emailLink(user: UserModel, purpose: 'verify' | 'reset' | 'set') {
     const token = atomic(() => this.issueToken(user.id, purpose));
+
     const route =
       purpose === 'verify'
         ? 'verify-email'
@@ -124,6 +125,7 @@ export class AuthService {
       throw error;
     }
     await this.emailLink(user, 'verify');
+
     return {
       message:
         'A confirmation link has been sent to your email. Open it to confirm your account before signing in.',
@@ -215,6 +217,7 @@ export class AuthService {
     if (user && !user.email_verified) await this.emailLink(user, 'verify');
     return { message: genericMessage };
   }
+
   verifyEmail(token: string) {
     atomic(() => {
       const record = db

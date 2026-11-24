@@ -97,8 +97,12 @@ export class AccountActionPage implements OnInit {
       const result = await this.auth.authAction('/' + this.mode, body);
       this.notice.set(result.message);
       this.complete.set(true);
+      this.email = '';
       this.password = '';
       this.confirmPassword = '';
+      this.visible.set(false);
+      this.confirmVisible.set(false);
+      form.resetForm({ email: '', password: '', confirmPassword: '' });
     } catch (error) {
       this.error.set(message(error));
     } finally {

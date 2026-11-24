@@ -82,8 +82,9 @@
     class="button secondary"
     >Request a new confirmation link</a
   >}@if(complete()){<a routerLink="/login" class="button primary full-width">Continue to sign in</a
-  >}
+  >} @if(!complete()){
   <p class="auth-switch recovery-back"><a routerLink="/login">Back to sign in</a></p>
+  }
   <p class="recovery-security">
     {{mode==='forgot-password'||mode==='resend-verification'?"Reset links are single-use and expire.
     For your security, we don't confirm whether an account exists.":"Reset links are single-use and

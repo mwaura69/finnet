@@ -48,7 +48,7 @@ export class AuthPage implements AfterViewInit {
       const config = await this.auth.configInfo();
       if (!config.googleClientId) {
         this.googleError.set(
-          'Google sign-in is not configured for this deployment. You can use email sign-in.',
+          'Google sign-in is unavailable. Configure GOOGLE_CLIENT_ID in the backend environment and restart the API.',
         );
         return;
       }
@@ -82,7 +82,21 @@ export class AuthPage implements AfterViewInit {
           acceptTerms: true,
         });
         this.confirmation.set(result.message);
+        this.name = '';
+        this.email = '';
         this.password = '';
+        this.confirmPassword = '';
+        this.acceptTerms = false;
+        this.visible.set(false);
+        this.confirmVisible.set(false);
+        form.resetForm({
+          name: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
+          acceptTerms: false,
+          stayLoggedIn: false,
+        });
       } else {
         const result = await this.auth.login({
           email: this.email,

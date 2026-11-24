@@ -37,16 +37,23 @@ export async function sendEmail(message: EmailMessage) {
     host: config.smtp.host,
     port: config.smtp.port,
     secure: config.smtp.port === 465,
+    requireTLS: config.smtp.port === 587,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 30000,
     ...(config.smtp.user ? { auth: { user: config.smtp.user, pass: config.smtp.pass } } : {}),
   });
   try {
     return await transport.sendMail({ from: config.smtp.from, ...message });
-  } catch {
-    throw new ApiError(
-      503,
-      'EMAIL_DELIVERY_FAILED',
-      'Email delivery is temporarily unavailable. Please try again.',
-    );
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    const detail =
+      code === 'EAUTH'
+        ? 'SMTP authentication failed. Check the account and app password.'
+        : code === 'EDNS' || code === 'ENOTFOUND'
+          ? 'SMTP server could not be found. Check SMTP_HOST.'
+          : 'Email delivery is temporarily unavailable. Please try again.';
+    throw new ApiError(503, 'EMAIL_DELIVERY_FAILED', detail);
   }
 }
 export const sendMfaCode = (to: string, code: string) =>
