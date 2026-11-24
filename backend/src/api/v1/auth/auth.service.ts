@@ -19,6 +19,7 @@ import { sendEmail } from '../../../utils/email.service.js';
 import type { GoogleInput, GoogleProfile, LoginInput, RegisterInput } from './auth.types.js';
 import type { UserModel } from '../../../db/models/user.model.js';
 import { verifyToken } from '../../../utils/jwt.js';
+import { renderEmail, emailContent } from '../../../utils/email.template.js';
 
 const genericMessage =
   'If an eligible account exists, a secure link has been sent to its email address.';
@@ -109,6 +110,7 @@ export class AuthService {
       to: user.email,
       subject: label,
       text: `${label}\n\nOpen this secure link: ${link.toString()}\n\n${purpose === 'verify' ? 'The link expires in 24 hours.' : 'The link expires in 30 minutes.'} It can be used once. If you did not request this, ignore this message.`,
+      html: renderEmail(emailContent[purpose](link.toString())),
     });
   }
 

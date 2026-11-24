@@ -1,3 +1,4 @@
+import { renderEmail } from '../utils/email.template.js';
 import { randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import type { LedgerTransaction } from '../types/index.js';
@@ -9,11 +10,6 @@ export interface NotificationMessage {
   html?: string;
 }
 export type NotificationSender = (message: NotificationMessage) => Promise<unknown>;
-const escapeHtml = (value: string) =>
-  value.replace(
-    /[&<>"']/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
-  );
 const money = (value: number, currency: string) =>
   `${currency} ${value.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 export const receiptNumber = (id: string) =>
@@ -49,12 +45,12 @@ export function queueTransactionNotification(
       'This is a transaction record, not a tax invoice or proof of settlement.',
       'FinTrack by Finnet Technologies | Finnet Nexus Group',
     ].join('\n\n');
-    const html = `<div style="font-family:Arial,sans-serif;color:#0f3656;max-width:620px"><h1 style="font-size:22px;border-bottom:3px solid #1eba15;padding-bottom:14px">FinTrack transaction ${action}</h1>${text
-      .split('\n\n')
-      .map((line) => `<p>${escapeHtml(line)}</p>`)
-      .join(
-        '',
-      )}<p>Transaction email preferences are available in your profile. Security emails remain enabled.</p></div>`;
+    const html = renderEmail({
+      preheader: subject,
+      heading: `Transaction ${action}`,
+      paragraphs: text.split('\n\n'),
+      note: 'Transaction email preferences are available in your profile. Security emails remain enabled.',
+    });
     db.prepare(
       'INSERT INTO notification_outbox(id,event_key,recipient_user_id,recipient_email,subject,text_body,html_body,next_attempt_at,created_at) VALUES(?,?,?,?,?,?,?,?,?)',
     ).run(

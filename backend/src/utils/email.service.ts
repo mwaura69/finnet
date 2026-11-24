@@ -1,3 +1,4 @@
+import { renderEmail } from './email.template.js';
 import nodemailer from 'nodemailer';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -16,6 +17,16 @@ export function setEmailSenderForTests(sender: typeof testSender) {
   testSender = sender;
 }
 export async function sendEmail(message: EmailMessage) {
+  message = {
+    ...message,
+    html:
+      message.html ||
+      renderEmail({
+        preheader: message.subject,
+        heading: message.subject,
+        paragraphs: message.text.split(/\n\n/),
+      }),
+  };
   if (testSender) return testSender(message);
   if (config.mail.delivery === 'outbox') {
     const id = randomUUID();

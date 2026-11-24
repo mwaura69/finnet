@@ -5,7 +5,7 @@ import '../setup.js';
 const { createApp } = await import('../../src/app.js');
 const { setEmailSenderForTests } = await import('../../src/utils/email.service.js');
 const { db } = await import('../../src/db/index.js');
-const mail: { text: string }[] = [];
+const mail: { text: string; html?: string }[] = [];
 setEmailSenderForTests(async (message) => {
   mail.push(message);
   return { messageId: 'test' };
@@ -28,6 +28,10 @@ test('verified cookie sessions, CSRF, profile, ledger, Excel, receipts, MFA and 
   }).expect(200);
   await post('/auth/login', { email: 'test@example.test', password: 'Test123!' }).expect(403);
   const token = new URL(mail.at(-1)!.text.match(/https?:\/\/\S+/)![0]).searchParams.get('token');
+  assert.ok(
+    mail.at(-1)!.html?.includes('token=' + token),
+    'HTML confirmation button includes the issued token',
+  );
   await post('/auth/verify-email', { token }).expect(200);
   await post('/auth/verify-email', { token }).expect(400);
   const sentCount = mail.length;
@@ -73,6 +77,31 @@ test('verified cookie sessions, CSRF, profile, ledger, Excel, receipts, MFA and 
     unitPrice: 25,
     tradeDate: '2026-01-02',
   }).expect(422);
+  await post(`/portfolios/${p.id}/transactions`, {
+    instrument: 'SCOM',
+    type: 'SELL',
+    quantity: 60,
+    unitPrice: 28,
+    tradeDate: '2026-01-03',
+  }).expect(201);
+  await post(`/portfolios/${p.id}/transactions`, {
+    instrument: 'SCOM',
+    type: 'SELL',
+    quantity: 50,
+    unitPrice: 27,
+    tradeDate: '2026-01-02',
+  }).expect(422); // Backdating cannot invalidate the later sell.
+  await agent.delete(`/api/v1/transactions/${buy.id}`).set('X-CSRF-Token', csrf).expect(409);
+  const invalid = await post(`/portfolios/${p.id}/transactions`, {
+    instrument: '',
+    type: 'BUY',
+    quantity: -1,
+    unitPrice: 0,
+    tradeDate: '2026-02-30',
+  }).expect(422);
+  assert.ok(invalid.body.error.details.some((d: { field: string }) => d.field === 'quantity'));
+  const summary = await agent.get(`/api/v1/portfolios/${p.id}/summary`).expect(200);
+  assert.equal(summary.body.data.holdings[0].netQuantity, 40);
   const x = await agent.get(`/api/v1/portfolios/${p.id}/transactions/export.xlsx`).expect(200);
   assert.match(x.headers['content-type'], /spreadsheet/);
   await agent.get(`/api/v1/transactions/${buy.id}/receipt`).expect(200);

@@ -99,7 +99,17 @@ export class TransactionService {
       const p = this.access.require(userId, String(row['portfolio_id']), 'write');
       const ledger = readLedger(this.connection, p.id),
         transaction = ledger.find((t) => t.id === transactionId)!;
-      summarize(ledger.filter((t) => t.id !== transactionId));
+      try {
+        summarize(ledger.filter((t) => t.id !== transactionId));
+      } catch (error) {
+        if (error instanceof ApiError && error.code === 'INSUFFICIENT_HOLDINGS')
+          throw new ApiError(
+            409,
+            'LEDGER_CONFLICT',
+            'Cannot delete this transaction: ' + error.message,
+          );
+        throw error;
+      }
       this.connection.prepare('DELETE FROM transactions WHERE id=?').run(transactionId);
       queueTransactionNotification(this.connection, userId, p, transaction, 'deleted');
     });

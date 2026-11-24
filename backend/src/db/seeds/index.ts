@@ -53,7 +53,9 @@ if (!db.prepare('SELECT id FROM users WHERE email = ?').get(email)) {
       ['p-growth', 'EQTY', 'BUY', 1000, 5100, '2026-11-18'],
       ['p-income', 'T-BILL-91', 'BUY', 1500, 100000, '2026-10-05'],
       ['p-income', 'KCB', 'BUY', 2500, 4400, '2026-11-02'],
+      ['p-income', 'KCB', 'SELL', 500, 4650, '2026-11-12'],
       ['p-global', 'VOO', 'BUY', 30, 51000, '2026-10-20'],
+      ['p-global', 'VOO', 'SELL', 5, 52500, '2026-11-08'],
       ['p-global', 'MSFT', 'BUY', 20, 42000, '2026-11-10'],
     ];
     rows.forEach((r, i) =>
