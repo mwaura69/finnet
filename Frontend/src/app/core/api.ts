@@ -123,7 +123,7 @@ export class Auth {
       )
     ).data;
   }
-  async google(input: { credential: string; stayLoggedIn: boolean; acceptTerms?: true }) {
+  async google(input: { credential: string; stayLoggedIn: boolean; acceptTerms: true }) {
     const { data } = await firstValueFrom(
       this.http.post<Envelope<Session | MfaChallenge>>(this.config.base + '/auth/google', input),
     );
