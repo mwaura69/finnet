@@ -60,3 +60,5 @@ Account emails use `backend/src/utils/email.template.ts` for escaped, table-base
 ### Render Free email fix
 
 Use `MAIL_DELIVERY=resend`, a backend-only `RESEND_API_KEY`, and `MAIL_FROM` on a verified sender domain. This sends through HTTPS rather than blocked SMTP ports. See [Render setup and verification](docs/DEPLOYMENT.md#email-on-render-free-resend-https-transport). After a failed signup email, use Resend verification once delivery is configured.
+
+For the hosted demo login, enable `SEED_DEMO_ON_START=true` on Render after deploying the startup-seeding change. Keep `DEMO_MODE=false`; normal password and cookie authentication remain enforced. See [demo initialization](docs/DEPLOYMENT.md#reliable-demo-initialization-on-render).

@@ -100,3 +100,20 @@ This corrects forwarded-address handling; it does not change email delivery. A 2
 References: [Express proxy configuration](https://expressjs.com/en/guide/behind-proxies/), [express-rate-limit proxy troubleshooting](https://express-rate-limit.mintlify.app/guides/troubleshooting-proxy-issues).
 
 Verification resend emits a private `verification_resend` event tied to the HTTP request ID. `outcome=not_eligible` means no email was attempted (the account is unknown or already verified); `accepted` means the configured transport accepted the message, not that an inbox received it; `failed` means delivery threw an error. The public response for ineligible accounts stays generic. These logs contain no email addresses, message bodies or tokens.
+
+### Reliable demo initialization on Render
+
+The regular server start runs migrations but historically did not seed an account. To initialize the advertised fictional workspace on the running database, deploy the startup-seeding change and set these in Render:
+
+```dotenv
+SEED_DEMO_ON_START=true
+DEMO_EMAIL=demo@fintrack.local
+DEMO_PASSWORD=FinTrackDemo!2026
+DEMO_MODE=false
+```
+
+Keep the existing start command (`npm start` from backend, or `npm run start -w backend` from the repository root). Seeding runs before listening, against the exact same `DATABASE_PATH` connection as the API. A missing account receives three fictional portfolios, BUYs and partial SELLs, confirmed email status and disabled marketing/transaction emails. Login still verifies the real password hash and issues normal cookie sessions; this flag does not enable an authentication bypass.
+
+The operation is idempotent: existing accounts, passwords, MFA settings and portfolio edits are preserved. If logs say the existing password differs from DEMO_PASSWORD, initialization intentionally did not reset it. Correct the configured credentials for that existing account or create a separate fictional demo account and align the frontend's advertised login. Do not delete the database or disable authentication to repair this.
+
+Alternatively, run `npm run db:setup:prod` from backend after building, against the running database. Seeding only in a build step is insufficient when build and runtime filesystems differ. Render Free's SQLite data can still be lost on replacement/redeploy; startup seeding only restores the missing fictional demo, not registered users or their data. Persistent database storage is still required for retention.
