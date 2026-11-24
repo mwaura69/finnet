@@ -46,6 +46,25 @@ test('transaction form preserves input and links server errors; missing portfoli
   fixture.componentRef.setInput('portfolioId', 'new-portfolio');
   fixture.componentRef.setInput('currency', 'KES');
   const dialog = fixture.componentInstance;
+  fixture.detectChanges();
+  await fixture.whenStable();
+  const el = fixture.nativeElement as HTMLElement;
+  assert.equal((el.querySelector('#quantity') as HTMLInputElement).value, '');
+  assert.equal((el.querySelector('#unit-price') as HTMLInputElement).value, '');
+  assert.equal(el.querySelector('.trade-total'), null);
+  for (const id of ['quantity', 'unit-price']) {
+    assert.equal(el.querySelector('#' + id)?.getAttribute('inputmode'), 'decimal');
+    assert.ok(el.querySelector('#' + id)?.getAttribute('placeholder'));
+  }
+  assert.equal(el.querySelector('#trade-date')?.getAttribute('max'), dialog.today);
+  assert.equal(
+    el.querySelectorAll('[role="radiogroup"] input[type="radio"][name="type"]').length,
+    2,
+  );
+  assert.equal(el.querySelector('.trade-selected-check')?.textContent?.trim(), '✓');
+  dialog.model.quantity = 100;
+  fixture.detectChanges();
+  assert.equal(el.querySelector('.trade-total'), null, 'Price must also be filled in');
   dialog.model = {
     instrument: 'SCOM',
     type: 'SELL',
@@ -59,7 +78,6 @@ test('transaction form preserves input and links server errors; missing portfoli
   fixture.detectChanges();
   assert.equal(dialog.model.quantity, 100);
   assert.equal(dialog.busy(), false);
-  const el = fixture.nativeElement as HTMLElement;
   assert.match(el.querySelector('#quantity-error')?.textContent || '', /You hold 50 SCOM/);
   assert.equal(el.querySelector('#quantity')?.getAttribute('aria-describedby'), 'quantity-error');
   assert.equal(el.querySelector('#quantity')?.getAttribute('aria-invalid'), 'true');

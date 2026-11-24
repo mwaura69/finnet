@@ -1,9 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { validateTrade } from './transaction-validation';
+import { validateTrade, type TradeDraft } from './transaction-validation';
 import { Component, input, output, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { Api, message } from '../core/api';
-import type { Currency, Holding, TransactionInput } from '../core/models';
+import type { Currency, Holding } from '../core/models';
 import { Dialog } from './dialog';
 import { number, money } from '../core/format';
 @Component({
@@ -46,11 +46,11 @@ export class TransactionDialog {
     month: '2-digit',
     day: '2-digit',
   }).format(new Date());
-  model: TransactionInput = {
+  model: TradeDraft = {
     instrument: '',
     type: 'BUY',
-    quantity: 0,
-    unitPrice: 0,
+    quantity: null,
+    unitPrice: null,
     tradeDate: this.today,
   };
   available() {
@@ -64,7 +64,13 @@ export class TransactionDialog {
   }
   async save(form: NgForm) {
     this.submitted = true;
-    if (this.busy() || Object.keys(validateTrade(this.model, this.today)).length || form.invalid)
+    if (
+      this.busy() ||
+      Object.keys(validateTrade(this.model, this.today)).length ||
+      form.invalid ||
+      this.model.quantity === null ||
+      this.model.unitPrice === null
+    )
       return;
     this.busy.set(true);
     this.error.set('');
@@ -72,7 +78,9 @@ export class TransactionDialog {
     try {
       await this.api.addTransaction(this.portfolioId(), {
         ...this.model,
-        instrument: this.model.instrument.toUpperCase(),
+        quantity: this.model.quantity,
+        unitPrice: this.model.unitPrice,
+        instrument: this.model.instrument.trim().toUpperCase(),
       });
       this.saved.emit();
     } catch (e) {

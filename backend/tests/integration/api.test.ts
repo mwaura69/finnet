@@ -63,13 +63,26 @@ test('verified cookie sessions, CSRF, profile, ledger, Excel, receipts, MFA and 
   ).body.data;
   const buy = (
     await post(`/portfolios/${p.id}/transactions`, {
-      instrument: 'SCOM',
+      instrument: ' scom ',
       type: 'BUY',
       quantity: 100,
       unitPrice: 25,
       tradeDate: '2026-01-01',
     }).expect(201)
   ).body.data;
+  assert.equal(
+    buy.instrument,
+    'SCOM',
+    'API trims and uppercases instruments without trusting the UI',
+  );
+  const future = await post(`/portfolios/${p.id}/transactions`, {
+    instrument: 'SCOM',
+    type: 'BUY',
+    quantity: 1,
+    unitPrice: 25,
+    tradeDate: '9999-12-31',
+  }).expect(422);
+  assert.ok(future.body.error.details.some((d: { field: string }) => d.field === 'tradeDate'));
   await post(`/portfolios/${p.id}/transactions`, {
     instrument: 'SCOM',
     type: 'SELL',

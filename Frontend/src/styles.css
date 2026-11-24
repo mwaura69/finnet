@@ -4302,10 +4302,13 @@ main#main {
 }
 
 /* Transaction entry */
-.trade-type-toggle { display:flex; gap:8px; margin:16px 0; }
-.trade-type-toggle label { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; border:1px solid #ccd4df; border-radius:8px; cursor:pointer; }
+.trade-type-toggle { display:flex; align-items:stretch; gap:8px; margin:16px 0; }
+.trade-type-toggle label { flex:1; box-sizing:border-box; min-height:48px; margin:0; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; border:1px solid #ccd4df; border-radius:8px; cursor:pointer; }
 .trade-type-toggle label:has(input:checked) { background:#e5f2df; border-color:#51b630; }
-.trade-type-toggle input { width:auto; margin:0; accent-color:#2e7d20; }
+.trade-type-toggle input { width:18px; height:18px; min-height:0; padding:0; margin:0; flex-shrink:0; accent-color:#2e7d20; }
+.trade-type-toggle input:focus, .trade-type-toggle input:focus-visible { outline:none; box-shadow:none; }
+.trade-type-toggle label:has(input:focus-visible) { outline:3px solid #162b42; outline-offset:3px; }
+.trade-selected-check { display:inline-block; width:1em; font-weight:800; }
 .field-error { color:#b42318; font-size:13px; margin:4px 0 12px; }
 .field-error:empty { display:none; }
 .trade-spinner { display:inline-block; width:14px; height:14px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:trade-spin .7s linear infinite; }
