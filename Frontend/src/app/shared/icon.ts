@@ -30,6 +30,8 @@ import { Component, input } from '@angular/core';
 export class Icon {
   name = input('chart');
   paths: Record<string, string> = {
+    user: 'M20 21v-2a7 7 0 0 0-14 0v2 M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
+    settings: 'M3 6h18 M3 12h18 M3 18h18 M8 3v6 M16 9v6 M9 15v6',
     grid: 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
     wallet: 'M3 6h17v14H3z M3 6V4h15v2 M16 11h5v5h-5z',
     chart: 'M4 20h17 M5 16l5-5 4 3 6-9 M15 5h5v5',

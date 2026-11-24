@@ -1,0 +1,92 @@
+<ft-auth-layout
+  ><h2>{{title}}</h2>
+  <p class="auth-subtitle">{{intro}}</p>
+  @if(busy() && mode==='verify-email'){
+  <div class="loading-state" role="status"><span class="spinner"></span>Confirming your email…</div>
+  } @if(notice()){
+  <p class="notice" role="status">{{notice()}}</p>
+  }@if(error()){
+  <p class="form-error" role="alert">{{error()}}</p>
+  } @if(!complete() && mode!=='verify-email'){
+  <form #form="ngForm" (ngSubmit)="submit(form)">
+    <fieldset [disabled]="busy()">
+      @if(mode==='forgot-password'||mode==='resend-verification'){<label for="account-email"
+        >Email address</label
+      ><input
+        id="account-email"
+        name="email"
+        type="email"
+        [(ngModel)]="email"
+        required
+        email
+        autocomplete="email"
+        placeholder="you@example.com"
+      />} @else{<label for="new-password">New password</label>
+      <div class="password-input">
+        <input
+          id="new-password"
+          name="password"
+          [type]="visible()?'text':'password'"
+          [(ngModel)]="password"
+          required
+          minlength="8"
+          maxlength="72"
+          autocomplete="new-password"
+        /><button
+          type="button"
+          (click)="visible.set(!visible())"
+          [attr.aria-label]="visible()?'Hide password':'Show password'"
+        >
+          <ft-icon name="eye" />
+        </button>
+      </div>
+      <ft-password-strength [password]="password" /><label for="confirm-password"
+        >Confirm new password</label
+      >
+      <div
+        class="password-input"
+        [class.password-matched]="confirmPassword && password===confirmPassword"
+      >
+        <input
+          id="confirm-password"
+          name="confirmPassword"
+          [type]="confirmVisible()?'text':'password'"
+          [(ngModel)]="confirmPassword"
+          required
+          autocomplete="new-password"
+        /><button
+          type="button"
+          (click)="confirmVisible.set(!confirmVisible())"
+          [attr.aria-label]="confirmVisible()?'Hide confirmation password':'Show confirmation password'"
+        >
+          <ft-icon name="eye" />
+        </button>
+      </div>
+      @if(confirmPassword){
+      <p class="field-help" [class.match-success]="password===confirmPassword">
+        {{password===confirmPassword?'✓ Passwords match':'Passwords must match.'}}
+      </p>
+      }} @if(form.submitted && (form.invalid||passwordInvalid())){
+      <p class="form-error" role="alert">
+        {{mode==='forgot-password'||mode==='resend-verification'?'Enter a valid email
+        address.':'Follow the password requirements and make sure both passwords match.'}}
+      </p>
+      }
+      <button type="submit" class="button primary full-width auth-submit">
+        {{busy()?'Please wait…':action}}
+      </button>
+    </fieldset>
+  </form>
+  } @if(mode==='verify-email'&&error()){<a
+    routerLink="/resend-verification"
+    class="button secondary"
+    >Request a new confirmation link</a
+  >}@if(complete()){<a routerLink="/login" class="button primary full-width">Continue to sign in</a
+  >}
+  <p class="auth-switch recovery-back"><a routerLink="/login">Back to sign in</a></p>
+  <p class="recovery-security">
+    {{mode==='forgot-password'||mode==='resend-verification'?"Reset links are single-use and expire.
+    For your security, we don't confirm whether an account exists.":"Reset links are single-use and
+    expire. Choose a password you don't use anywhere else."}}
+  </p></ft-auth-layout
+>

@@ -1,3 +1,5 @@
+import { AuthLayout } from '../shared/auth-layout';
+import { PasswordStrength } from '../shared/password-strength';
 import { AfterViewInit, Component, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -8,7 +10,7 @@ import { Icon } from '../shared/icon';
 
 @Component({
   selector: 'ft-auth-page',
-  imports: [FormsModule, RouterLink, Icon],
+  imports: [FormsModule, RouterLink, Icon, AuthLayout, PasswordStrength],
   templateUrl: './auth.page.html',
 })
 export class AuthPage implements AfterViewInit {
@@ -22,6 +24,9 @@ export class AuthPage implements AfterViewInit {
   name = '';
   email = '';
   password = '';
+  confirmPassword = '';
+  confirmVisible = signal(false);
+  googleAttempted = false;
   stayLoggedIn = false;
   acceptTerms = false;
   validPassword = validPassword;
@@ -59,7 +64,12 @@ export class AuthPage implements AfterViewInit {
     }
   }
   async submit(form: NgForm) {
-    if (form.invalid || this.busy() || (this.register && !validPassword(this.password))) return;
+    if (
+      form.invalid ||
+      this.busy() ||
+      (this.register && (!validPassword(this.password) || this.password !== this.confirmPassword))
+    )
+      return;
     this.busy.set(true);
     this.error.set('');
     this.verificationNeeded.set(false);

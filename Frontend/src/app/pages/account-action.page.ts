@@ -1,3 +1,6 @@
+import { AuthLayout } from '../shared/auth-layout';
+import { PasswordStrength } from '../shared/password-strength';
+import { Icon } from '../shared/icon';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -5,97 +8,8 @@ import { Auth, message } from '../core/api';
 import { validPassword } from '../core/session';
 @Component({
   selector: 'ft-account-action',
-  imports: [FormsModule, RouterLink],
-  template: `<main class="account-page public-account-page">
-    <a routerLink="/login" class="account-brand"
-      ><img src="/brand/finnet-logo-dark.svg" alt="Finnet Nexus Group" width="180" height="58"
-    /></a>
-    <section class="panel account-panel">
-      <span class="eyebrow">FINTRACK ACCOUNT SECURITY</span>
-      <h1>{{ title }}</h1>
-      <p>{{ intro }}</p>
-      @if (busy() && mode === 'verify-email') {
-        <div class="loading-state" role="status">
-          <span class="spinner"></span>Confirming your email…
-        </div>
-      }
-      @if (notice()) {
-        <p class="notice" role="status">{{ notice() }}</p>
-      }
-      @if (error()) {
-        <p class="form-error" role="alert">{{ error() }}</p>
-      }
-      @if (!complete() && mode !== 'verify-email') {
-        <form #form="ngForm" (ngSubmit)="submit(form)">
-          <fieldset [disabled]="busy()">
-            @if (mode === 'forgot-password' || mode === 'resend-verification') {
-              <label for="account-email">Email address</label
-              ><input
-                id="account-email"
-                type="email"
-                name="email"
-                [(ngModel)]="email"
-                required
-                email
-                autocomplete="email"
-                placeholder="you@example.com"
-              />
-            } @else {
-              <label for="new-password">New password</label
-              ><input
-                id="new-password"
-                type="password"
-                name="password"
-                [(ngModel)]="password"
-                required
-                minlength="8"
-                maxlength="72"
-                autocomplete="new-password"
-              />
-              <p class="password-rules field-help">
-                At least 8 characters, with an uppercase letter, lowercase letter, number and
-                symbol.
-              </p>
-              <label for="confirm-password">Confirm new password</label
-              ><input
-                id="confirm-password"
-                type="password"
-                name="confirmPassword"
-                [(ngModel)]="confirmPassword"
-                required
-                autocomplete="new-password"
-              />
-            }
-            @if (form.submitted && (form.invalid || passwordInvalid())) {
-              <p class="form-error" role="alert">
-                {{
-                  mode === 'forgot-password' || mode === 'resend-verification'
-                    ? 'Enter a valid email address.'
-                    : 'Use the password requirements above and make sure both passwords match.'
-                }}
-              </p>
-            }
-            <button class="button primary full-width auth-submit" type="submit">
-              {{ busy() ? 'Please wait…' : action }}
-            </button>
-          </fieldset>
-        </form>
-      }
-      @if (mode === 'verify-email' && error()) {
-        <a routerLink="/resend-verification" class="button secondary"
-          >Request a new confirmation link</a
-        >
-      }
-      @if (complete()) {
-        <a routerLink="/login" class="button primary full-width">Continue to sign in</a>
-      }
-      <p class="auth-switch"><a routerLink="/login">Back to sign in</a></p>
-      <p class="field-help">
-        Authentication links are single-use and expire. For your security, account existence is not
-        disclosed by recovery requests.
-      </p>
-    </section>
-  </main>`,
+  imports: [FormsModule, RouterLink, AuthLayout, PasswordStrength, Icon],
+  templateUrl: './account-action.page.html',
 })
 export class AccountActionPage implements OnInit {
   auth = inject(Auth);
@@ -104,6 +18,8 @@ export class AccountActionPage implements OnInit {
   token = this.route.snapshot.queryParamMap.get('token') || '';
   email = '';
   password = '';
+  visible = signal(false);
+  confirmVisible = signal(false);
   confirmPassword = '';
   busy = signal(false);
   error = signal('');
@@ -117,24 +33,24 @@ export class AccountActionPage implements OnInit {
         : this.mode === 'resend-verification'
           ? 'Send a new confirmation link'
           : this.mode === 'set-password'
-            ? 'Set your password'
-            : 'Choose a new password';
+            ? 'Set a new password'
+            : 'Set a new password';
   }
   get intro() {
     return this.mode === 'verify-email'
       ? 'We are confirming that this email belongs to you.'
       : this.mode === 'forgot-password'
-        ? 'Enter your account email and we will prepare a secure password reset link.'
+        ? "Enter your account email and we'll send you a secure reset link."
         : this.mode === 'resend-verification'
           ? 'Enter your email to request another account confirmation link.'
-          : 'Create a strong password for your FinTrack account.';
+          : 'Choose a strong password for your FinTrack account.';
   }
   get action() {
     return this.mode === 'forgot-password'
-      ? 'Send password reset link'
+      ? 'Send reset link'
       : this.mode === 'resend-verification'
         ? 'Send confirmation link'
-        : 'Save password';
+        : 'Update password';
   }
   ngOnInit() {
     if (this.mode === 'verify-email') void this.verify();

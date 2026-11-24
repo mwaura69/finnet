@@ -1,171 +1,140 @@
-<div class="auth-layout">
-  <section class="auth-story">
-    <a
-      routerLink="/login"
-      class="brand finnet-brand"
-      aria-label="FinTrack by Finnet Technologies, Finnet Nexus Group"
-    >
-      <img src="/brand/finnet-logo-light.svg" alt="Finnet Nexus Group" width="205" height="66" />
-      <span class="product-lockup">FinTrack <small>by Finnet Technologies</small></span>
-    </a>
-    <div class="auth-story-copy">
-      <span class="eyebrow light">A CLEARER FINANCIAL PICTURE</span>
-      <h1>Every position.<br />One perspective.</h1>
-      <p>
-        From the first trade to the bigger picture. Bring your client portfolios, transactions and
-        holdings into focus.
-      </p>
-      <div class="auth-art finnet-art" aria-hidden="true">
-        <div class="art-orbit orbit-one"></div>
-        <div class="art-orbit orbit-two"></div>
-        <div class="brand-emblem">
-          <img src="/brand/finnet-symbol.svg" alt="" width="130" height="130" />
-        </div>
-        <div class="finnet-art-pattern"></div>
-        <span class="brand-art-caption">CONNECTED FOR A CLEARER TOMORROW</span>
-      </div>
-    </div>
-    <p class="auth-story-footer">FINNET TECHNOLOGIES <span>FINNET NEXUS GROUP</span></p>
-  </section>
-  <main class="auth-form-side">
-    <div class="auth-form-wrap">
-      <div class="mobile-auth-brand">
-        <img
-          src="/brand/finnet-logo-dark.svg"
-          alt="Finnet Nexus Group"
-          width="180"
-          height="58"
-        /><span>FinTrack by Finnet Technologies</span>
-      </div>
-      <span class="eyebrow">YOUR INVESTMENT WORKSPACE</span>
-      <h2>{{ register ? 'A fresh perspective starts here.' : 'Welcome back.' }}</h2>
-      <p class="auth-subtitle">
-        {{ register ? 'Create your analyst account to get started.' : 'Sign in to see the complete
-        picture.' }}
-      </p>
-      @if(expired){
-      <p class="notice" role="status">Your session ended. Sign in again to continue.</p>
-      } @if(confirmation()){
-      <p class="notice" role="status">{{ confirmation() }}</p>
-      <p class="field-help">
-        Open the confirmation link from your email, then return here to sign in.
-      </p>
-      <a routerLink="/resend-verification" class="text-link">Send another confirmation link</a>}
-      <form #form="ngForm" (ngSubmit)="submit(form)">
-        <fieldset [disabled]="busy()">
-          @if(register){<label for="name">Full name</label
-          ><input
-            id="name"
-            name="name"
-            [(ngModel)]="name"
-            required
-            minlength="2"
-            maxlength="100"
-            autocomplete="name"
-            placeholder="Your full name"
-          />} <label for="email">Email address</label
-          ><input
-            id="email"
-            name="email"
-            type="email"
-            [(ngModel)]="email"
-            required
-            email
-            autocomplete="username"
-            placeholder="you@example.com"
-          />
-          <label for="password">Password</label>
-          <div class="password-input">
-            <input
-              id="password"
-              name="password"
-              [type]="visible()?'text':'password'"
-              [(ngModel)]="password"
-              required
-              [minlength]="register?8:1"
-              maxlength="72"
-              [autocomplete]="register?'new-password':'current-password'"
-              placeholder="Enter your password"
-            /><button
-              type="button"
-              (click)="visible.set(!visible())"
-              [attr.aria-label]="visible()?'Hide password':'Show password'"
-              [attr.aria-pressed]="visible()"
-            >
-              <ft-icon name="eye" />
-            </button>
-          </div>
-
-          @if(register){
-          <p class="password-rules field-help">
-            At least 8 characters, with an uppercase letter, lowercase letter, number and symbol.
-          </p>
-          }
-          <div class="auth-links">
-            @if(!register){<label class="check-row"
-              ><input type="checkbox" name="stayLoggedIn" [(ngModel)]="stayLoggedIn" /><span
-                >Stay signed in on this device</span
-              ></label
-            ><a routerLink="/forgot-password" class="text-link">Forgot password?</a>}
-          </div>
-          <label class="check-row"
-            ><input
-              type="checkbox"
-              name="acceptTerms"
-              [(ngModel)]="acceptTerms"
-              [required]="register"
-            /><span
-              >{{ register ? 'I agree to the' : 'For a new Google account, I agree to the' }}
-              <a routerLink="/terms" target="_blank" rel="noopener" class="text-link"
-                >terms and conditions</a
-              >.</span
-            ></label
-          >
-          @if(form.submitted && (form.invalid || (register && !validPassword(password)))){
-          <p class="form-error" role="alert">
-            {{ register?'Enter your name, a valid email, a password matching the requirements, and
-            accept the terms.':'Enter a valid email and your password.' }}
-          </p>
-          } @if(error()){
-          <p class="form-error" role="alert">{{ error() }}</p>
-          @if(verificationNeeded()){<a routerLink="/resend-verification" class="text-link"
-            >Send a new confirmation link</a
-          >}}
-          <button type="submit" class="button primary full-width auth-submit">
-            {{ busy()?'Please wait…':register?'Create account':'Sign in to FinTrack' }}
-          </button>
-        </fieldset>
-      </form>
-      <div class="google-login">
-        <div #googleButton class="google-button-host" [attr.aria-busy]="googleLoading()"></div>
-        @if(googleLoading()){
-        <p class="field-help" role="status">Loading Google sign-in…</p>
-        }@if(googleError()){<button
+<ft-auth-layout
+  ><h2>{{ register ? 'Create your account' : 'Welcome back' }}</h2>
+  <p class="auth-subtitle">
+    {{ register ? 'Set up your analyst account to get started.' : 'Sign in to your FinTrack
+    workspace.' }}
+  </p>
+  @if(expired){
+  <p class="notice" role="status">Your session ended. Sign in again to continue.</p>
+  } @if(confirmation()){
+  <p class="notice" role="status">{{confirmation()}}</p>
+  <p class="field-help">Open the confirmation link from your email, then sign in.</p>
+  <a routerLink="/resend-verification" class="text-link">Send another confirmation link</a>}
+  <form #form="ngForm" (ngSubmit)="submit(form)">
+    <fieldset [disabled]="busy()">
+      @if(register){<label for="name">Full name</label
+      ><input
+        id="name"
+        name="name"
+        [(ngModel)]="name"
+        required
+        minlength="2"
+        maxlength="100"
+        autocomplete="name"
+        placeholder="Your full name"
+      />} <label for="email">Email address</label
+      ><input
+        id="email"
+        name="email"
+        type="email"
+        [(ngModel)]="email"
+        required
+        email
+        autocomplete="username"
+        placeholder="you@example.com"
+      />
+      <label for="password">Password</label>
+      <div class="password-input">
+        <input
+          id="password"
+          name="password"
+          [type]="visible()?'text':'password'"
+          [(ngModel)]="password"
+          required
+          [minlength]="register?8:1"
+          maxlength="72"
+          [autocomplete]="register?'new-password':'current-password'"
+          placeholder="Enter your password"
+        /><button
           type="button"
-          class="button secondary full-width"
-          (click)="setupGoogle()"
+          (click)="visible.set(!visible())"
+          [attr.aria-label]="visible()?'Hide password':'Show password'"
+          [attr.aria-pressed]="visible()"
         >
-          Try Google sign-in again
+          <ft-icon name="eye" />
         </button>
-        <p class="provider-note" role="status">{{ googleError() }}</p>
-        }
       </div>
-      <p class="auth-switch">
-        {{ register?'Already have an account?':'New to FinTrack?' }}
-        <a [routerLink]="register?'/login':'/register'"
-          >{{ register?'Sign in':'Create an account' }}</a
+      @if(register){<ft-password-strength [password]="password" /><label for="confirm-password"
+        >Confirm password</label
+      >
+      <div
+        class="password-input"
+        [class.password-matched]="confirmPassword && confirmPassword===password"
+      >
+        <input
+          id="confirm-password"
+          name="confirmPassword"
+          [type]="confirmVisible()?'text':'password'"
+          [(ngModel)]="confirmPassword"
+          required
+          autocomplete="new-password"
+          placeholder="Re-enter your password"
+        /><button
+          type="button"
+          (click)="confirmVisible.set(!confirmVisible())"
+          [attr.aria-label]="confirmVisible()?'Hide confirmation password':'Show confirmation password'"
         >
-      </p>
-      @if(!register){
-      <div class="demo-login">
-        <span class="eyebrow">TAKE A LOOK AROUND</span>
-        <p>Explore a fictional investment workspace.<br />No setup needed.</p>
-        <button class="button secondary full-width" [disabled]="busy()" (click)="demoLogin()">
-          <ft-icon name="grid" />Explore demo workspace</button
-        ><small>demo&#64;fintrack.local · FinTrackDemo!2026</small>
+          <ft-icon name="eye" />
+        </button>
       </div>
-      }
-    </div>
-    <footer class="auth-copyright">© {{ year }} Finnet Technologies. All rights reserved.</footer>
-  </main>
-</div>
+      <p class="field-help" [class.match-success]="confirmPassword && confirmPassword===password">
+        {{confirmPassword && confirmPassword===password?'✓ Passwords match':'Must match the password
+        above.'}}
+      </p>
+      <label class="check-row"
+        ><input type="checkbox" name="acceptTerms" [(ngModel)]="acceptTerms" required /><span
+          >I agree to the
+          <a routerLink="/terms" target="_blank" rel="noopener">terms and conditions</a></span
+        ></label
+      >} @else{
+      <div class="auth-links">
+        <label class="check-row"
+          ><input type="checkbox" name="stayLoggedIn" [(ngModel)]="stayLoggedIn" /><span
+            >Stay signed in</span
+          ></label
+        ><a routerLink="/forgot-password" class="text-link">Forgot password?</a>
+      </div>
+      } @if(form.submitted && (form.invalid || (register &&
+      (!validPassword(password)||password!==confirmPassword)))){
+      <p class="form-error" role="alert">
+        {{register?'Check your details, password requirements, matching passwords and terms
+        acceptance.':'Enter a valid email and your password.'}}
+      </p>
+      } @if(error()){
+      <p class="form-error" role="alert">{{error()}}</p>
+      @if(verificationNeeded()){<a routerLink="/resend-verification" class="text-link"
+        >Send a new confirmation link</a
+      >}}
+      <button class="button primary full-width auth-submit" type="submit">
+        {{busy()?'Please wait…':register?'Create account':'Sign in'}}
+      </button>
+    </fieldset>
+  </form>
+  <div class="google-divider">or</div>
+  <div class="google-login">
+    <div #googleButton class="google-button-host" [attr.aria-busy]="googleLoading()"></div>
+    @if(googleError() || googleLoading()){<button
+      type="button"
+      class="button secondary full-width google-fallback"
+      [disabled]="googleLoading()"
+      (click)="googleAttempted=true;setupGoogle()"
+    >
+      <span class="google-g" aria-hidden="true">G</span>{{register?'Sign up with Google':'Sign in
+      with Google'}}</button
+    >}@if(googleAttempted && googleError()){
+    <p class="provider-note" role="status">{{googleError()}}</p>
+    }
+  </div>
+  <p class="auth-switch">
+    {{register?'Already have an account?':'New to FinTrack?'}}
+    <a [routerLink]="register?'/login':'/register'">{{register?'Sign in':'Create an account'}}</a>
+  </p>
+  @if(!register){
+  <div class="google-divider">or</div>
+  <div class="demo-login">
+    <button class="button secondary full-width" [disabled]="busy()" (click)="demoLogin()">
+      Explore demo workspace</button
+    ><small>demo&#64;fintrack.local · FinTrackDemo!2026</small>
+  </div>
+  }
+</ft-auth-layout>
