@@ -6,9 +6,9 @@ const { API_URL, GOOGLE_CLIENT_ID = '' } = process.env;
         process.exit(1);
     }
 
-    mkdirSync('src/environments', { recursive: true });
+    mkdirSync('src/app/environments', { recursive: true });
     writeFileSync(
-        'src/environments/environment.prod.ts',
+        'src/app/environments/environment.prod.ts',
         `export const environment = {
     production: true,
     apiUrl: ${JSON.stringify(API_URL)},
