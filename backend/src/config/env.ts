@@ -56,7 +56,11 @@ const schema = z
           path: ['MFA_HMAC_SECRET'],
           message: 'Production requires a separate MFA HMAC secret.',
         });
-      if (value.MAIL_DELIVERY !== 'smtp' || !value.SMTP_HOST)
+      if (
+          value.MAIL_DELIVERY === 'outbox' ||
+          (value.MAIL_DELIVERY === 'smtp' && !value.SMTP_HOST) ||
+          (value.MAIL_DELIVERY === 'resend' && !value.RESEND_API_KEY)
+        )
         ctx.addIssue({
           code: 'custom',
           path: ['MAIL_DELIVERY'],
