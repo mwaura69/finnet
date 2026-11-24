@@ -31,9 +31,13 @@
     </p>
   </div>
   <div class="heading-actions">
-    <button class="button secondary" (click)="edit.set(true)">
+    <button class="button secondary" [disabled]="!p.permissions?.canEdit" (click)="edit.set(true)">
       <ft-icon name="edit" />Edit portfolio</button
-    ><button class="button primary" (click)="adding.set(true)">
+    ><button
+      class="button primary"
+      [disabled]="!p.permissions?.canRecordTransactions"
+      (click)="adding.set(true)"
+    >
       <ft-icon name="plus" />Record transaction
     </button>
   </div>
@@ -180,8 +184,17 @@
       >
         <ft-icon name="download" />Export CSV
       </button>
+      <button
+        class="button secondary export-button"
+        [disabled]="exportBusy() || !filtered().length"
+        (click)="exportExcel()"
+      >
+        <ft-icon name="download" />{{ exportBusy() ? 'Preparing Excel…' : 'Excel workbook' }}
+      </button>
     </div>
-    @if(from() && to() && from()>to()){
+    @if(exportError()){
+    <p class="form-error filter-error" role="alert">{{ exportError() }}</p>
+    } @if(from() && to() && from()>to()){
     <p class="form-error filter-error" role="alert">
       The start date must be on or before the end date.
     </p>
@@ -190,7 +203,11 @@
       <span class="empty-icon"><ft-icon name="swap" /></span>
       <h3>The first trade sets things in motion</h3>
       <p>Record a buy transaction to start building this portfolio's holdings.</p>
-      <button class="button primary" (click)="adding.set(true)">
+      <button
+        class="button primary"
+        [disabled]="!p.permissions?.canRecordTransactions"
+        (click)="adding.set(true)"
+      >
         <ft-icon name="plus" />Record transaction
       </button>
     </div>
@@ -254,13 +271,22 @@
             </td>
             <td class="nowrap">{{ t.tradeDate | date:'d MMM y' }}</td>
             <td>
-              <button
-                class="icon-button"
-                [attr.aria-label]="'Delete '+t.type+' '+t.instrument+' transaction on '+t.tradeDate"
-                (click)="confirmTransaction(t)"
-              >
-                <ft-icon name="trash" />
-              </button>
+              <div class="table-actions">
+                <a
+                  class="icon-button"
+                  [routerLink]="['/transactions',t.id,'receipt']"
+                  [attr.aria-label]="'View receipt for '+t.instrument+' on '+t.tradeDate"
+                  ><ft-icon name="book"
+                /></a>
+                <button
+                  class="icon-button"
+                  [disabled]="!p.permissions?.canRecordTransactions"
+                  [attr.aria-label]="'Delete '+t.type+' '+t.instrument+' transaction on '+t.tradeDate"
+                  (click)="confirmTransaction(t)"
+                >
+                  <ft-icon name="trash" />
+                </button>
+              </div>
             </td>
           </tr>
           }
@@ -297,7 +323,13 @@
     <div class="empty">
       <h3>No open positions yet</h3>
       <p>Record a buy transaction to see your current holdings here.</p>
-      <button class="button primary" (click)="adding.set(true)">Record transaction</button>
+      <button
+        class="button primary"
+        [disabled]="!p.permissions?.canRecordTransactions"
+        (click)="adding.set(true)"
+      >
+        Record transaction
+      </button>
     </div>
     }@else{
     <div class="table-scroll">

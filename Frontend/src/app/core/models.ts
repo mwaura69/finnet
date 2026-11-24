@@ -3,11 +3,35 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  avatarUrl: string | null;
+  role: 'admin' | 'analyst' | 'viewer';
+  emailVerified: boolean;
+  emailMfaEnabled: boolean;
+  transactionEmails: boolean;
+  productEmails: boolean;
+  onboardingCompleted: boolean;
+}
+export interface SessionInfo {
+  accessExpiresAt: string;
+  sessionExpiresAt: string;
+  idleTimeoutSeconds: number;
 }
 export interface Session {
-  token: string;
   user: User;
   demoMode: boolean;
+  session: SessionInfo;
+}
+export interface MfaChallenge {
+  requiresMfa: true;
+  challengeId: string;
+  emailHint: string;
+  expiresAt: string;
+  purpose?: 'login' | 'enable';
+}
+export interface AuthCapabilities {
+  googleClientId: string | null;
+  emailDelivery: 'smtp' | 'outbox';
+  passwordPolicy: { minLength: number };
 }
 export interface Portfolio {
   id: string;
@@ -20,6 +44,12 @@ export interface Portfolio {
   unrealizedGain: number;
   holdingsCount: number;
   transactionCount: number;
+  permissions?: {
+    canEdit: boolean;
+    canDelete: boolean;
+    canRecordTransactions: boolean;
+    canManageMembers: boolean;
+  };
 }
 export type PortfolioInput = Pick<Portfolio, 'name' | 'clientName' | 'baseCurrency'>;
 export interface Transaction {
@@ -51,4 +81,13 @@ export interface Summary {
 }
 export interface Envelope<T> {
   data: T;
+}
+
+export interface Receipt {
+  receiptNumber: string;
+  issuedAt: string;
+  portfolio: { id: string; name: string; clientName: string; baseCurrency: Currency };
+  transaction: Transaction & { totalValue: number };
+  disclaimer: string;
+  analyst: { id: string; name: string; email: string };
 }

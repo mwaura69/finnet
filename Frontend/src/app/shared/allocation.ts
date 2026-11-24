@@ -12,8 +12,7 @@ import { money } from '../core/format';
           [attr.aria-label]="description()"
         >
           <div class="donut-center">
-            <span>{{ holdings().length }}</span
-            ><small>instruments</small>
+            <span>{{ holdings().length }}</span><small>instruments</small>
           </div>
         </div>
         <ul class="allocation-legend">
@@ -42,7 +41,7 @@ export class Allocation {
   holdings = input.required<Holding[]>();
   currency = input.required<Currency>();
   money = money;
-  colors = ['#087f7d', '#193c5b', '#71869b', '#b7c8d6', '#466879', '#364554'];
+  colors = ['#1eba15', '#0f3656', '#71869b', '#b7c8d6', '#466879', '#364554'];
   total = computed(() => this.holdings().reduce((s, h) => s + h.totalValue, 0));
   gradient = computed(() => {
     let start = 0;

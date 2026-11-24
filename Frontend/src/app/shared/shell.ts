@@ -1,10 +1,12 @@
+import { Onboarding } from './onboarding';
+import { InstallPrompt } from './install-prompt';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Auth, ApiConfig } from '../core/api';
 import { Icon } from './icon';
 @Component({
   selector: 'ft-shell',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, Icon],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, Icon, Onboarding, InstallPrompt],
   template: ` <a class="skip-link" href="#main">Skip to content</a>
     @if (menu()) {
       <button class="nav-scrim" aria-label="Close navigation" (click)="menu.set(false)"></button>
@@ -15,10 +17,15 @@ import { Icon } from './icon';
       [inert]="mobile() && !menu()"
       (keydown.escape)="menu.set(false)"
     >
-      <a routerLink="/" class="brand" (click)="menu.set(false)"
-        ><span class="brand-mark">f<span>↗</span></span
-        ><span>FinTrack<small>BY FINNET TECHNOLOGIES</small></span></a
+      <a
+        routerLink="/"
+        class="brand finnet-brand"
+        (click)="menu.set(false)"
+        aria-label="FinTrack by Finnet Technologies, Finnet Nexus Group"
       >
+        <img src="/brand/finnet-logo-light.svg" alt="Finnet Nexus Group" width="205" height="66" />
+        <span class="product-lockup">FinTrack <small>by Finnet Technologies</small></span>
+      </a>
       <div class="workspace">
         <span class="workspace-mark"><ft-icon name="briefcase" /></span
         ><span>Investment workspace<small>Portfolio management</small></span>
@@ -35,8 +42,14 @@ import { Icon } from './icon';
         <a routerLink="/portfolios" routerLinkActive="active" (click)="menu.set(false)"
           ><ft-icon name="wallet" />Portfolios</a
         >
+        <a routerLink="/profile" routerLinkActive="active" (click)="menu.set(false)"
+          ><ft-icon name="grid" />Profile</a
+        ><a routerLink="/settings" routerLinkActive="active" (click)="menu.set(false)"
+          ><ft-icon name="shield" />Settings</a
+        ><a routerLink="/terms" (click)="menu.set(false)"><ft-icon name="book" />Terms</a>
       </nav>
       <div class="sidebar-bottom">
+        <ft-install-prompt />
         <div class="insight-note">
           <ft-icon name="shield" /><strong>Clarity. Confidence. Control.</strong>
           <p>One place for every portfolio decision.</p>
@@ -78,7 +91,10 @@ import { Icon } from './icon';
         <span>FinTrack by Finnet Technologies</span
         ><span>Built for a clearer financial picture.</span>
       </footer>
-    </div>`,
+    </div>
+    @if (auth.user() && !auth.user()?.onboardingCompleted) {
+      <ft-onboarding />
+    }`,
 })
 export class Shell {
   auth = inject(Auth);

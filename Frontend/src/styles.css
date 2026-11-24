@@ -1,12 +1,13 @@
 /* FinTrack design tokens: one accent family, navy, neutral greys; semantic return colours. */
 :root {
-  --navy: #10263e;
-  --navy-deep: #0b1b2d;
-  --navy-light: #1b3752;
-  --accent: #087f7d;
-  --accent-hover: #066a69;
-  --accent-soft: #e8f4f2;
-  --accent-light: #8ce1d3;
+  --navy: #0f3656;
+  --navy-deep: #09283f;
+  --navy-light: #19496a;
+  --brand-green: #1eba15;
+  --accent: #167a11;
+  --accent-hover: #12680e;
+  --accent-soft: #edf8eb;
+  --accent-light: #8de780;
   --background: #f4f6f9;
   --surface: #fff;
   --text: #172e45;
@@ -402,7 +403,7 @@ select:disabled {
   text-decoration: none;
 }
 .sidebar nav a.active {
-  background: #254757;
+  background: #1c533f;
   color: #fff;
 }
 .sidebar nav a.active ft-icon {
@@ -461,8 +462,8 @@ select:disabled {
   flex-shrink: 0;
   font-size: 0.875rem;
   font-weight: 650;
-  color: #164b50;
-  background: #d8ebe9;
+  color: #225f1b;
+  background: #e4f3df;
 }
 .avatar.small {
   width: 32px;
@@ -525,9 +526,9 @@ select:disabled {
   gap: 1.1rem;
 }
 .demo-badge {
-  background: #edf5f5;
-  color: #356463;
-  border: 1px solid #d5e5e4;
+  background: #eff8ed;
+  color: #2a6325;
+  border: 1px solid #d6e8d0;
   border-radius: 6px;
   padding: 0.3rem 0.55rem;
   font-size: 0.75rem;
@@ -580,7 +581,7 @@ main#main {
   display: flex;
   align-items: center;
   overflow: hidden;
-  background: linear-gradient(115deg, #102b44, #183e56);
+  background: linear-gradient(115deg, #0f3656, #245c52);
   color: #fff;
   border-radius: var(--radius);
   padding: 2rem 2.25rem;
@@ -671,7 +672,7 @@ main#main {
   width: 250px;
   bottom: 43px;
   right: 32px;
-  background: #8ce1d337;
+  background: #8de78037;
 }
 .section-toolbar {
   display: flex;
@@ -729,7 +730,7 @@ main#main {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: #edf4f5;
+  background: #eff7ee;
   color: #336976;
   display: flex;
   align-items: center;
@@ -1102,8 +1103,8 @@ td a:not(.icon-button) {
   line-height: 1;
   border-radius: 4px;
   padding: 0.35rem 0.45rem;
-  color: #176065;
-  background: #e5f2f2;
+  color: #315f20;
+  background: #edf7e9;
   font-weight: 650;
 }
 .trade-badge.sell {
@@ -1211,7 +1212,7 @@ td a:not(.icon-button) {
   margin-bottom: 1.6rem;
 }
 .portfolio-note {
-  background: linear-gradient(135deg, #132f49, #1b4156);
+  background: linear-gradient(135deg, #0f3656, #205347);
   color: #fff;
   border-radius: var(--radius);
   padding: 1.5rem 1.65rem;
@@ -1458,7 +1459,7 @@ dialog::backdrop {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  background: #edf5f5;
+  background: #eff8ed;
   padding: 0.85rem;
   border-radius: 8px;
   margin: 1.2rem 0 0;
@@ -1472,9 +1473,9 @@ dialog::backdrop {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  border: 1px solid #b9d9d4;
-  background: #eaf6f2;
-  color: #215e50;
+  border: 1px solid #c3ddbb;
+  background: #f0f8ec;
+  color: #285b20;
   border-radius: 9px;
   padding: 0.75rem 1rem;
   margin-bottom: 1.4rem;
@@ -1572,7 +1573,7 @@ dialog::backdrop {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #edf5f5;
+  background: #eff8ed;
   color: #4f7b84;
   height: 56px;
   width: 56px;
@@ -1612,7 +1613,7 @@ dialog::backdrop {
   display: flex;
   flex-direction: column;
   padding: 3rem 3.5rem 1.7rem;
-  background: radial-gradient(ellipse at 90% 80%, #1e4d5c 0, transparent 50%), var(--navy);
+  background: radial-gradient(ellipse at 90% 80%, #245b4c 0, transparent 50%), var(--navy);
   color: #fff;
   overflow: hidden;
 }
@@ -1704,7 +1705,7 @@ dialog::backdrop {
   flex: 1;
   display: block;
   border-radius: 3px 3px 0 0;
-  background: linear-gradient(0deg, #58b9ae22, #7bd5c4);
+  background: linear-gradient(0deg, #1eba1522, #76db65);
 }
 .art-bars i:nth-child(1) {
   height: 20%;
@@ -1746,7 +1747,7 @@ dialog::backdrop {
   right: 5%;
   top: 12px;
   font-size: 3rem;
-  color: #8ce1d3;
+  color: #8de780;
 }
 .auth-form-side {
   position: relative;
@@ -2707,4 +2708,855 @@ dialog::backdrop {
 }
 .table-scroll {
   position: relative;
+}
+
+/* Brand assets and colours traced from the supplied Finnet Nexus Group reference. */
+.primary {
+  background: var(--brand-green);
+  color: var(--navy-deep);
+  font-weight: 750;
+}
+.primary:hover:not(:disabled) {
+  background: #36ca2d;
+  box-shadow: 0 3px 10px #1eba152b;
+}
+.brand.finnet-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+  letter-spacing: 0;
+}
+.finnet-brand > img {
+  display: block;
+  width: 100%;
+  max-width: 192px;
+  height: auto;
+}
+.brand.finnet-brand > .product-lockup {
+  display: block;
+  border-top: 1px solid #ffffff26;
+  padding-top: 0.7rem;
+  width: 100%;
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+.brand.finnet-brand .product-lockup small {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #c1d5df;
+  line-height: 1.5;
+  letter-spacing: 0;
+  margin-top: 0.15rem;
+}
+.sidebar {
+  border-top: 4px solid var(--brand-green);
+}
+.sidebar nav a.active {
+  border-left: 3px solid var(--brand-green);
+  padding-left: calc(1rem - 3px);
+}
+.workspace {
+  margin-top: 1.4rem;
+}
+.auth-story {
+  background: radial-gradient(ellipse at 100% 85%, #28634b 0, transparent 65%), var(--navy);
+  border-bottom: 7px solid var(--brand-green);
+}
+.auth-story::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 28px;
+  background: url('/brand/finnet-pattern.svg') left top / 28px 56px repeat-y;
+  opacity: 0.65;
+  pointer-events: none;
+}
+.auth-story .finnet-brand > img {
+  max-width: 225px;
+}
+.auth-story .product-lockup {
+  max-width: 225px;
+}
+.auth-story-copy {
+  padding-top: 2.5rem;
+}
+.finnet-art {
+  height: 230px;
+  margin-top: 1rem;
+}
+.brand-emblem {
+  position: absolute;
+  left: 22%;
+  top: 22px;
+  width: 166px;
+  height: 166px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 0 14px #1eba1514;
+  z-index: 1;
+}
+.brand-emblem img {
+  width: 132px;
+  height: 132px;
+}
+.finnet-art-pattern {
+  position: absolute;
+  right: 6%;
+  top: 28px;
+  width: 100px;
+  height: 120px;
+  background: url('/brand/finnet-pattern.svg') center / 29px 58px;
+  opacity: 0.5;
+  transform: rotate(12deg);
+  border-radius: 50%;
+}
+.brand-art-caption {
+  position: absolute;
+  left: 0;
+  bottom: 7px;
+  font-size: 0.75rem;
+  color: #b8d5cb;
+  letter-spacing: 0.12em;
+}
+.welcome-banner {
+  border-bottom: 4px solid var(--brand-green);
+  background: linear-gradient(110deg, var(--navy) 30%, #245c50);
+}
+.finnet-banner-art {
+  opacity: 1;
+  width: 300px;
+}
+.banner-pattern {
+  position: absolute;
+  inset: 24px -20px 0 auto;
+  width: 210px;
+  background: url('/brand/finnet-pattern.svg') center / 30px 60px;
+  opacity: 0.22;
+  transform: rotate(-20deg);
+  border-radius: 50%;
+}
+.banner-emblem {
+  position: absolute;
+  right: 55px;
+  top: 58px;
+  width: 128px;
+  height: 128px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 16px #1eba1514;
+}
+.banner-emblem img {
+  width: 108px;
+  height: 108px;
+}
+.mobile-auth-brand img {
+  display: block;
+  margin-bottom: 0.65rem;
+  max-width: 180px;
+}
+.demo-badge {
+  background: #eef8e9;
+  color: #315f20;
+  border-color: #d4e8ca;
+}
+.metric-icon {
+  color: #326a26;
+  background: #eff7eb;
+}
+.portfolio-note {
+  border-top: 3px solid var(--brand-green);
+}
+.auth-story-footer {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+@media (max-width: 1270px) {
+  .finnet-brand > img {
+    max-width: 174px;
+  }
+}
+@media (max-width: 1000px) {
+  .finnet-brand > img {
+    max-width: 158px;
+  }
+  .brand.finnet-brand > .product-lockup {
+    font-size: 1rem;
+  }
+  .workspace {
+    margin-top: 1.15rem;
+  }
+}
+@media (max-width: 760px) {
+  .sidebar .finnet-brand > img {
+    max-width: 192px;
+  }
+  .finnet-banner-art {
+    opacity: 0.28;
+    right: -85px;
+  }
+  .welcome-banner > div:first-child {
+    max-width: 90%;
+  }
+}
+@media (max-width: 480px) {
+  .finnet-banner-art {
+    opacity: 0.14;
+    right: -135px;
+  }
+  .welcome-banner > div:first-child {
+    max-width: 100%;
+  }
+  .mobile-auth-brand {
+    margin-bottom: 2rem;
+  }
+}
+
+/* Account, recovery, security and onboarding surfaces. */
+.auth-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+}
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 1rem 0;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.6;
+}
+.check-row input[type='checkbox'] {
+  appearance: auto;
+  flex: 0 0 auto;
+  min-height: 20px;
+  width: 20px;
+  height: 20px;
+  margin: 0.1rem 0 0;
+  accent-color: var(--accent);
+}
+.check-row a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.password-rules {
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.6;
+  padding-left: 1.2rem;
+  margin: 0.7rem 0 1rem;
+}
+.google-login {
+  margin: 1.3rem 0;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+}
+.provider-note {
+  background: #f3f6f8;
+  border: 1px solid var(--line);
+  padding: 0.85rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+.google-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin: 1.3rem 0;
+}
+.google-divider::before,
+.google-divider::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: var(--line);
+}
+.account-page {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.account-page > header {
+  margin-bottom: 1.6rem;
+}
+.account-page > header p {
+  color: var(--muted);
+}
+.account-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 1.4rem;
+  align-items: start;
+}
+.account-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  min-width: 0;
+}
+.account-panel h2 {
+  margin-bottom: 0.6rem;
+  font-size: 1.15rem;
+}
+.account-panel > p {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.account-panel form > .button,
+.account-panel fieldset > .button {
+  margin-top: 1.3rem;
+}
+.account-panel + .account-panel {
+  margin-top: 1.2rem;
+}
+.account-grid > .account-panel + .account-panel {
+  margin-top: 0;
+}
+.settings-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.settings-row:last-child {
+  border-bottom: 0;
+}
+.settings-row p {
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin: 0.3rem 0 0;
+}
+.settings-row label {
+  margin: 0;
+}
+.settings-row input[type='checkbox'] {
+  width: 22px;
+  min-height: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+  margin: 0.1rem 0 0;
+  flex-shrink: 0;
+}
+.profile-avatar {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 0.5rem 0 1.6rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+}
+.profile-avatar-preview {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  border: 2px solid #d6e7d0;
+  color: var(--navy);
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  font-weight: 650;
+  object-fit: cover;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.profile-avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profile-avatar input[type='file'] {
+  width: 100%;
+  max-width: 290px;
+  font-size: 0.8125rem;
+  padding: 0.65rem;
+}
+.profile-avatar .field-help {
+  max-width: 310px;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.account-tabs {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 1.1rem 0 1.5rem;
+}
+.account-tabs button,
+.account-tabs a {
+  border: 1px solid var(--line);
+  background: white;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+.account-tabs .active {
+  background: var(--accent-soft);
+  border-color: #b6d8ab;
+  color: var(--accent);
+}
+.security-note {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  background: #f0f7ed;
+  color: #315f26;
+  padding: 0.9rem 1rem;
+  border: 1px solid #d1e5c8;
+  border-radius: 9px;
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  margin: 1rem 0;
+}
+.security-note p {
+  margin: 0;
+}
+.session-warning {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(94vw, 620px);
+  padding: 1rem 1.2rem;
+  color: var(--text);
+  background: #fff;
+  border: 1px solid #cad8c4;
+  border-left: 4px solid var(--brand-green);
+  border-radius: 10px;
+  box-shadow: 0 8px 30px #10263e26;
+  z-index: 80;
+  font-size: 0.875rem;
+}
+.session-warning .button {
+  margin-left: 1rem;
+}
+.onboarding-backdrop {
+  position: fixed;
+  inset: 0;
+  background: #061c32a8;
+  backdrop-filter: blur(4px);
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+.onboarding-card {
+  background: white;
+  border-radius: 18px;
+  border-top: 5px solid var(--brand-green);
+  padding: 2rem;
+  width: min(100%, 510px);
+  box-shadow: 0 20px 90px #071b3f55;
+  max-height: calc(100dvh - 2.5rem);
+  overflow-y: auto;
+}
+.onboarding-card h2 {
+  font-size: 1.65rem;
+  line-height: 1.25;
+  margin: 0.8rem 0 1rem;
+}
+.onboarding-card p {
+  color: var(--muted);
+  line-height: 1.8;
+}
+.onboarding-card > img {
+  width: 160px;
+  height: auto;
+  margin-bottom: 0.7rem;
+}
+.onboarding-card .dialog-actions {
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.onboarding-card .button {
+  white-space: normal;
+}
+.onboarding-progress {
+  display: flex;
+  gap: 0.45rem;
+  margin: 1rem 0;
+}
+.onboarding-progress > span,
+.onboarding-progress > i {
+  height: 5px;
+  flex: 1;
+  border-radius: 4px;
+  background: #e0e8ed;
+}
+.onboarding-progress .active,
+.onboarding-progress .complete {
+  background: var(--brand-green);
+}
+.install-link {
+  color: inherit;
+  font-size: 0.8125rem;
+  padding: 0.8rem 0.5rem;
+  font-weight: 500;
+}
+.install-instructions {
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.8;
+  padding-left: 1.2rem;
+}
+.install-instructions li + li {
+  margin-top: 0.8rem;
+}
+.mfa-code {
+  font-size: 1.7rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.account-action {
+  max-width: 480px;
+  margin: 3rem auto;
+}
+.terms-content {
+  font-size: 1rem;
+  line-height: 1.8;
+}
+.terms-content h2 {
+  font-size: 1.15rem;
+  margin: 1.7rem 0 0.7rem;
+}
+.terms-content p,
+.terms-content li {
+  color: var(--muted);
+}
+.terms-content li + li {
+  margin-top: 0.5rem;
+}
+
+/* Printable portfolio ledger receipts and permission controls. */
+.receipt-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.3rem auto 1.5rem;
+  max-width: 980px;
+}
+.receipt-sheet {
+  max-width: 980px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-top: 5px solid var(--brand-green);
+  border-radius: var(--radius);
+  padding: 2.3rem;
+  margin: 0 auto;
+}
+.receipt-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-bottom: 1.8rem;
+  border-bottom: 1px solid var(--line);
+}
+.receipt-header > img {
+  width: 180px;
+  height: auto;
+}
+.receipt-header > div {
+  text-align: right;
+}
+.receipt-header h1 {
+  font-size: 1.6rem;
+  margin: 0.5rem 0;
+}
+.receipt-header p {
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin: 0;
+}
+.receipt-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.8rem 0;
+}
+.receipt-meta > div:last-child {
+  text-align: right;
+}
+.receipt-meta span,
+.receipt-signoff span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  margin-bottom: 0.5rem;
+}
+.receipt-meta strong,
+.receipt-signoff strong {
+  display: block;
+  font-size: 1rem;
+}
+.receipt-meta small,
+.receipt-signoff small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  margin-top: 0.4rem;
+}
+.receipt-total {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2rem;
+  padding: 1.4rem;
+  background: #f0f7ed;
+  border-bottom: 2px solid var(--brand-green);
+}
+.receipt-total span {
+  font-size: 0.875rem;
+}
+.receipt-total strong {
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+.receipt-signoff {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+  padding: 2rem 0;
+}
+.receipt-signoff p {
+  font-size: 0.8125rem;
+  line-height: 1.8;
+  color: var(--muted);
+  max-width: 350px;
+  margin: 0;
+}
+.receipt-sheet > footer {
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.permissions-panel {
+  margin-top: 1.5rem;
+  padding: 1.4rem;
+}
+.permissions-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+.permissions-form > label {
+  flex: 1;
+  min-width: 180px;
+  margin: 0;
+}
+.permissions-form > label select {
+  min-width: 130px;
+}
+.permissions-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+.permissions-list > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--line);
+  padding: 0.9rem 0;
+  font-size: 0.875rem;
+}
+.permissions-list small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-top: 0.3rem;
+}
+@media (max-width: 1000px) {
+  .account-grid {
+    grid-template-columns: 1fr;
+  }
+  .receipt-header {
+    flex-direction: column;
+  }
+  .receipt-header > div {
+    text-align: left;
+  }
+}
+@media (max-width: 480px) {
+  .account-panel {
+    padding: 1.1rem;
+  }
+  .onboarding-card {
+    padding: 1.4rem;
+  }
+  .profile-avatar {
+    gap: 0.8rem;
+  }
+  .settings-row {
+    gap: 0.7rem;
+  }
+  .receipt-sheet {
+    padding: 1.2rem;
+  }
+  .receipt-meta {
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+  .receipt-meta > div:last-child {
+    text-align: left;
+  }
+  .receipt-signoff {
+    flex-direction: column;
+    gap: 1.3rem;
+  }
+  .receipt-total {
+    gap: 1rem;
+    padding: 1rem;
+    justify-content: space-between;
+  }
+  .receipt-total strong {
+    font-size: 1.05rem;
+  }
+  .receipt-total span {
+    font-size: 0.75rem;
+  }
+  .receipt-actions .button {
+    font-size: 0.75rem;
+  }
+  .onboarding-card h2 {
+    font-size: 1.4rem;
+  }
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+  :root,
+  body {
+    background: #fff !important;
+    color: #0f3656;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .sidebar,
+  .topbar,
+  .page-footer,
+  .receipt-actions,
+  .skip-link,
+  .session-warning,
+  ft-install-prompt,
+  ft-onboarding {
+    display: none !important;
+  }
+  .app-content {
+    margin: 0 !important;
+  }
+  main#main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .receipt-sheet {
+    border: 0;
+    border-top: 4px solid #1eba15;
+    border-radius: 0;
+    padding: 0;
+    max-width: none;
+  }
+  .receipt-header {
+    flex-direction: row;
+  }
+  .receipt-header > div {
+    text-align: right;
+  }
+  .receipt-meta,
+  .receipt-signoff {
+    flex-direction: row;
+  }
+  .receipt-meta > div:last-child {
+    text-align: right;
+  }
+  .receipt-header > img {
+    width: 150px;
+  }
+  .table-scroll {
+    overflow: visible !important;
+  }
+  .receipt-sheet table {
+    font-size: 10pt;
+  }
+  .receipt-sheet th,
+  .receipt-sheet td {
+    padding: 9pt 6pt;
+    white-space: normal;
+  }
+  .receipt-sheet footer {
+    position: static;
+  }
+}
+
+.public-account-page {
+  max-width: 500px;
+  margin: 2rem auto;
+  padding: 1.2rem;
+}
+.account-brand {
+  display: block;
+  margin-bottom: 1.5rem;
+}
+.settings-row small {
+  display: block;
+  font-weight: 400;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 0.35rem;
+}
+.onboarding-progress {
+  list-style: none;
+  padding: 0;
+  flex-wrap: wrap;
+}
+.onboarding-progress li {
+  font-size: 0.75rem;
+  padding: 0.4rem;
+  background: #edf3e9;
+  border-radius: 5px;
+}
+.onboarding-progress li.active {
+  background: #1eba15;
+  color: #09283f;
+}
+.account-section-title {
+  margin-top: 1.7rem;
+}
+.sidebar-bottom .install-link {
+  color: #c5d8e6;
 }

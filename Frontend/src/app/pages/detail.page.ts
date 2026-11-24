@@ -43,6 +43,8 @@ export class DetailPage {
   loading = signal(true);
   error = signal('');
   notice = signal('');
+  exportBusy = signal(false);
+  exportError = signal('');
   tab = signal<'transactions' | 'holdings'>('transactions');
   search = signal('');
   type = signal('');
@@ -158,6 +160,32 @@ export class DetailPage {
       this.deleteError.set(message(e));
     } finally {
       this.deleteBusy.set(false);
+    }
+  }
+  async exportExcel() {
+    if (this.exportBusy()) return;
+    this.exportBusy.set(true);
+    this.exportError.set('');
+    try {
+      const blob = await this.api.exportTransactions(this.id, {
+        instrument: this.search(),
+        type: this.type(),
+        from: this.from(),
+        to: this.to(),
+        sort: this.sort(),
+        direction: this.direction() === 1 ? 'asc' : 'desc',
+      });
+      const url = URL.createObjectURL(blob),
+        anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `fintrack-${this.id}-transactions.xlsx`;
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      this.notice.set('Filtered transactions downloaded as an Excel workbook.');
+    } catch (error) {
+      this.exportError.set(message(error));
+    } finally {
+      this.exportBusy.set(false);
     }
   }
   exportCsv() {

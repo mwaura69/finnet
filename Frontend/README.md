@@ -34,7 +34,7 @@ Keep the documented response shapes: `{data: ...}` for success and `{error: {cod
 
 ## Design and states
 
-`src/styles.css` defines navy, teal, greys, semantic return colours, one sans-serif family, spacing and border tokens. Positive/negative return colours accompany explicit +/− signs. All amounts identify the portfolio currency and use two decimal places. The allocation chart has a text equivalent and a legend. Trade values are explicitly indicative, based on the latest recorded trade, rather than live market prices.
+`src/styles.css` defines Finnet navy, green, greys, semantic return colours, one sans-serif family, spacing and border tokens. Positive/negative return colours accompany explicit +/− signs. All amounts identify the portfolio currency and use two decimal places. The allocation chart has a text equivalent and a legend. Trade values are explicitly indicative, based on the latest recorded trade, rather than live market prices.
 
 The UI includes loading, empty, error and mutation feedback; confirmations for destructive actions; labels and visible keyboard focus; modal focus behavior; mobile navigation; and contained table scrolling at 375px. Shared dialogs and the allocation component live under `src/app/shared/`.
 
