@@ -49,7 +49,7 @@ action('/forgot-password', schemas.emailSchema, (req: any) =>
   service.forgotPassword(req.body.email),
 );
 action('/resend-verification', schemas.emailSchema, (req: any) =>
-  service.resendVerification(req.body.email),
+  service.resendVerification(req.body.email, req.requestId),
 );
 action('/reset-password', schemas.resetPasswordSchema, (req: any) =>
   service.resetPassword(req.body, 'reset'),

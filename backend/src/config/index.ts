@@ -2,6 +2,7 @@ import { env, jwtSecret } from './env.js';
 export { env } from './env.js';
 export const config = {
   port: env.PORT,
+  trustProxyHops: env.TRUST_PROXY_HOPS,
   production: env.NODE_ENV === 'production',
   demo: env.DEMO_MODE === 'true',
   secret: jwtSecret,
@@ -30,6 +31,7 @@ export const config = {
   mail: {
     delivery: env.NODE_ENV === 'test' ? 'outbox' : env.MAIL_DELIVERY,
     outboxPath: env.MAIL_OUTBOX_PATH,
+    resendApiKey: env.RESEND_API_KEY,
   },
 };
 export const mfa = config.mfa;

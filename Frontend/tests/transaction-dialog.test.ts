@@ -63,6 +63,7 @@ test('transaction form preserves input and links server errors; missing portfoli
   );
   assert.equal(el.querySelector('.trade-selected-check')?.textContent?.trim(), '✓');
   dialog.model.quantity = 100;
+  fixture.changeDetectorRef.markForCheck();
   fixture.detectChanges();
   assert.equal(el.querySelector('.trade-total'), null, 'Price must also be filled in');
   dialog.model = {
@@ -72,6 +73,7 @@ test('transaction form preserves input and links server errors; missing portfoli
     unitPrice: 25,
     tradeDate: '2026-01-01',
   };
+  fixture.changeDetectorRef.markForCheck();
   fixture.detectChanges();
   await fixture.whenStable();
   await dialog.save({ invalid: false });

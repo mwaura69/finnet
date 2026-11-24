@@ -6,7 +6,7 @@ The account extension adds email verification, single-use verification/reset/set
 
 Set `GOOGLE_CLIENT_ID` to a Google web client and register the exact frontend JavaScript origin in Google Cloud. The frontend loads Google Identity Services and offers its account chooser; the backend verifies the credential audience and verified email. It does not silently link a Google account to an existing password account. Without a client ID, Google sign-in reports that it is unavailable.
 
-Set `MAIL_DELIVERY=smtp`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `MAIL_FROM` for delivery. For development use `MAIL_DELIVERY=outbox`: messages, including confirmation/reset links and MFA codes, are written privately under `MAIL_OUTBOX_PATH` (default backend data directory). These files contain sensitive links: never publish or commit them. Automated tests replace the sender and never contact SMTP. Live Google and SMTP operation require valid provider credentials and separate verification.
+For Render Free, set `MAIL_DELIVERY=resend`, `RESEND_API_KEY`, and `MAIL_FROM` on a verified sending domain; see [deployment instructions](DEPLOYMENT.md#email-on-render-free-resend-https-transport). For SMTP-capable hosts, set `MAIL_DELIVERY=smtp`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `MAIL_FROM` for delivery. For development use `MAIL_DELIVERY=outbox`: messages, including confirmation/reset links and MFA codes, are written privately under `MAIL_OUTBOX_PATH` (default backend data directory). These files contain sensitive links: never publish or commit them. Automated tests replace the sender and never contact SMTP. Live Google and SMTP operation require valid provider credentials and separate verification.
 
 ## Sessions
 

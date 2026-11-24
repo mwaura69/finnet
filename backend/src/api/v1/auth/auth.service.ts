@@ -4,6 +4,7 @@ import { AuthRepository } from './auth.repository.js';
 import { ApiError } from '../../../utils/ApiError.js';
 import { hashPassword, verifyPassword, dummyHash } from '../../../utils/hash.js';
 import { config } from '../../../config/index.js';
+import { logger } from '../../../config/logger.js';
 import { db, atomic } from '../../../db/index.js';
 import {
   hashToken,
@@ -214,9 +215,20 @@ export class AuthService {
     return { message: genericMessage };
   }
 
-  async resendVerification(email: string) {
+  async resendVerification(email: string, requestId?: string) {
     const user = this.repository.findByEmail(email);
-    if (user && !user.email_verified) await this.emailLink(user, 'verify');
+    const context = { requestId, event: 'verification_resend', delivery: config.mail.delivery };
+    if (!user || user.email_verified) {
+      logger.info({ ...context, outcome: 'not_eligible' }, 'Verification email skipped');
+      return { message: genericMessage };
+    }
+    try {
+      await this.emailLink(user, 'verify');
+      logger.info({ ...context, outcome: 'accepted' }, 'Verification email accepted by transport');
+    } catch (error) {
+      logger.warn({ ...context, outcome: 'failed' }, 'Verification email delivery failed');
+      throw error;
+    }
     return { message: genericMessage };
   }
 

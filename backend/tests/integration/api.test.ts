@@ -27,6 +27,13 @@ test('verified cookie sessions, CSRF, profile, ledger, Excel, receipts, MFA and 
     acceptTerms: true,
   }).expect(200);
   await post('/auth/login', { email: 'test@example.test', password: 'Test123!' }).expect(403);
+  const beforeResend = mail.length;
+  await post('/auth/resend-verification', { email: 'test@example.test' }).expect(200);
+  assert.equal(
+    mail.length,
+    beforeResend + 1,
+    'Eligible unverified account must reach the transport',
+  );
   const token = new URL(mail.at(-1)!.text.match(/https?:\/\/\S+/)![0]).searchParams.get('token');
   assert.ok(
     mail.at(-1)!.html?.includes('token=' + token),
