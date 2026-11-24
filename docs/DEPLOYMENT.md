@@ -90,3 +90,13 @@ Render Free has no persistent disk. This project's SQLite database can disappear
 - Confirm `/api/v1/auth/config` reports `emailDelivery: "resend"` after deployment. SMTP settings have no effect in this mode.
 - Render logs distinguish provider rejections (HTTP status only) from network, timeout and invalid-response failures. HTTP 400, 401, 403 and 422 are surfaced as provider configuration failures. Unknown failures remain sanitized. Share only provider/status/reason/code fields for support, never credentials or message bodies.
 - After correcting delivery, use Resend verification for a previously registered account. Rotate any credentials shared in public or chat and update them directly in the hosting dashboard.
+
+### Forwarded headers and rate limiting
+
+`TRUST_PROXY_HOPS` sets Express's bounded numeric proxy trust before middleware runs. It defaults to `0` for direct/local hosting. For the nearest Render reverse proxy, set `TRUST_PROXY_HOPS=1` in Render and redeploy this version. Verify the forwarding topology: one hop selects the right-most forwarded address, which might itself be another proxy when Netlify or additional Render routing is present. Only increase the hop count after confirming each trusted hop overwrites or appends forwarded client information safely; the directly accessible Render URL must remain safe too. Never use unrestricted `trust proxy=true` or disable rate-limit validation to hide the warning.
+
+This corrects forwarded-address handling; it does not change email delivery. A 200 response from resend verification deliberately hides whether the account exists or is already verified. Confirm actual delivery in the recipient inbox and the email provider dashboard.
+
+References: [Express proxy configuration](https://expressjs.com/en/guide/behind-proxies/), [express-rate-limit proxy troubleshooting](https://express-rate-limit.mintlify.app/guides/troubleshooting-proxy-issues).
+
+Verification resend emits a private `verification_resend` event tied to the HTTP request ID. `outcome=not_eligible` means no email was attempted (the account is unknown or already verified); `accepted` means the configured transport accepted the message, not that an inbox received it; `failed` means delivery threw an error. The public response for ineligible accounts stays generic. These logs contain no email addresses, message bodies or tokens.

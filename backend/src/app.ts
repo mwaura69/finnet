@@ -10,6 +10,8 @@ import { notFound } from './middleware/notFound.middleware.js';
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
+  // Trust only the configured nearest proxy hops, never arbitrary forwarded addresses.
+  app.set('trust proxy', config.trustProxyHops || false);
   app.use(requestLogger);
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(
