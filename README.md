@@ -1,6 +1,6 @@
 # FinTrack by Finnet Technologies
 
-A navy-and-teal Angular portfolio and transactions workspace for fictional investment clients. This repository is a **frontend-complete starter with a backend business-service scaffold**, as requested. It is **not a completed assessment submission or a live deployment**.
+A Finnet navy-and-green Angular portfolio and transactions workspace for fictional investment clients. This repository is a **frontend-complete starter with a backend business-service scaffold**, as requested. It is **not a completed assessment submission or a live deployment**.
 
 ## Start in under ten minutes
 
@@ -115,7 +115,7 @@ CI runs `npm ci` and `npm run check`. If a machine has limited memory, use `NG_B
 
 ## Design, assumptions and trade-offs
 
-- Brand is typographic, inspired by the assessment's deep-navy/one-accent instruction. No official logo assets were supplied. Product lockup reads **FinTrack by Finnet Technologies**.
+- Branding now follows the supplied Finnet Nexus Group image: blue `#0F3656`, green `#1EBA15`, the Finnet wordmark and connected-node symbol, and geometric triangle motifs. Logo shapes were traced into SVG assets; the product lockup still reads **FinTrack by Finnet Technologies**. See [branding notes](docs/BRANDING.md).
 - The interface supports 375px mobile. Wide financial tables scroll within their panels, while the page itself stays within the viewport. Controls are labeled, focus is visible, native modal dialogs contain keyboard focus, and destructive actions require confirmation.
 - KES and USD are displayed separately. There is no FX conversion or combined multi-currency total. Positive/negative return colours always accompany explicit +/− signs. BUY/SELL badges use teal/amber rather than return colours.
 - Moving-average cost removes the average cost of sold units. Total invested means remaining open-position basis. Realized return is shown separately. No fees, dividends, corporate actions, short selling or cash ledger are modeled.
