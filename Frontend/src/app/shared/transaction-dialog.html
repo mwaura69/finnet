@@ -1,0 +1,101 @@
+<ft-dialog (closed)="close()">
+  <h2 dialog-title>Add transaction</h2>
+  <p class="dialog-intro">Record a trade. Holdings, summary and chart update together.</p>
+  <form #form="ngForm" (ngSubmit)="save(form)" novalidate>
+    @if (error()) {
+    <p class="form-error" role="alert">{{ error() }}</p>
+    }
+    <fieldset [disabled]="busy()">
+      <label for="instrument">Instrument</label>
+      <input
+        id="instrument"
+        name="instrument"
+        [ngModel]="model.instrument"
+        (ngModelChange)="model.instrument = $event.toUpperCase(); changed('instrument')"
+        (blur)="touched['instrument'] = true"
+        required
+        maxlength="20"
+        list="instruments"
+        placeholder="e.g. SCOM, KCB, T-BILL-91"
+        autofocus
+        aria-describedby="instrument-error"
+        [attr.aria-invalid]="!!fieldError('instrument')"
+      />
+      <datalist id="instruments">
+        @for (instrument of instruments(); track instrument) {
+        <option [value]="instrument"></option>
+        }
+      </datalist>
+      <p id="instrument-error" class="field-error">{{ fieldError('instrument') }}</p>
+      <div role="group" aria-label="Transaction type" class="trade-type-toggle">
+        <label><input type="radio" name="type" value="BUY" [(ngModel)]="model.type" /> BUY</label>
+        <label><input type="radio" name="type" value="SELL" [(ngModel)]="model.type" /> SELL</label>
+      </div>
+      @if (model.type === 'SELL') {
+      <p class="field-help">
+        {{ number(available()) }} units currently held. Backdated trades are checked against the
+        historical ledger and later sells.
+      </p>
+      }
+      <div class="form-row">
+        <div>
+          <label for="quantity">Quantity</label
+          ><input
+            id="quantity"
+            name="quantity"
+            type="number"
+            [(ngModel)]="model.quantity"
+            (ngModelChange)="changed('quantity')"
+            (blur)="touched['quantity'] = true"
+            required
+            step="any"
+            aria-describedby="quantity-error"
+            [attr.aria-invalid]="!!fieldError('quantity')"
+          />
+          <p id="quantity-error" class="field-error">{{ fieldError('quantity') }}</p>
+        </div>
+        <div>
+          <label for="unit-price">Unit price ({{ currency() }})</label
+          ><input
+            id="unit-price"
+            name="unitPrice"
+            type="number"
+            [(ngModel)]="model.unitPrice"
+            (ngModelChange)="changed('unitPrice')"
+            (blur)="touched['unitPrice'] = true"
+            required
+            step="0.01"
+            aria-describedby="price-error"
+            [attr.aria-invalid]="!!fieldError('unitPrice')"
+          />
+          <p id="price-error" class="field-error">{{ fieldError('unitPrice') }}</p>
+        </div>
+      </div>
+      <label for="trade-date">Trade date</label
+      ><input
+        id="trade-date"
+        name="tradeDate"
+        type="date"
+        [(ngModel)]="model.tradeDate"
+        (ngModelChange)="changed('tradeDate')"
+        (blur)="touched['tradeDate'] = true"
+        required
+        [max]="today"
+        aria-describedby="date-error"
+        [attr.aria-invalid]="!!fieldError('tradeDate')"
+      />
+      <p id="date-error" class="field-error">{{ fieldError('tradeDate') }}</p>
+      <p class="trade-total">
+        <span>Transaction value</span
+        ><strong>{{ money((model.quantity || 0) * (model.unitPrice || 0), currency()) }}</strong>
+      </p>
+      <div class="dialog-actions">
+        <button type="button" class="button secondary" (click)="close()">Cancel</button
+        ><button type="submit" class="button primary" [disabled]="busy()" [attr.aria-busy]="busy()">
+          @if (busy()) { <span class="trade-spinner" aria-hidden="true"></span> }{{ busy() ?
+          'Recording…' : 'Record transaction' }}
+        </button>
+      </div>
+    </fieldset>
+  </form>
+</ft-dialog>

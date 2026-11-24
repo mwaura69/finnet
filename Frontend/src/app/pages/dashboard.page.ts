@@ -99,9 +99,11 @@ export class DashboardPage implements OnInit {
     const edit = !!this.editor();
     this.editor.set(undefined);
     this.currency.set(p.baseCurrency);
-    this.notice.set(
-      edit ? 'Portfolio updated.' : 'Portfolio created. Add your first transaction to get started.',
-    );
+    if (!edit) {
+      await this.router.navigate(['/portfolios', p.id], { state: { notice: 'Portfolio created. Add your first transaction to get started.' } });
+      return;
+    }
+    this.notice.set('Portfolio updated.');
     await this.load();
   }
   async remove() {

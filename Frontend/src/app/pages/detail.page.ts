@@ -12,7 +12,7 @@ import { Allocation } from '../shared/allocation';
 import { Dialog } from '../shared/dialog';
 import { PortfolioDialog } from '../shared/portfolio-dialog';
 import { TransactionDialog } from '../shared/transaction-dialog';
-type SortKey = 'tradeDate' | 'instrument' | 'quantity' | 'unitPrice' | 'amount';
+type SortKey = 'type' | 'tradeDate' | 'instrument' | 'quantity' | 'unitPrice' | 'amount';
 @Component({
   selector: 'ft-detail',
   imports: [
@@ -85,6 +85,7 @@ export class DetailPage {
     this.filtered().slice((this.page() - 1) * this.pageSize, this.page() * this.pageSize),
   );
   constructor() {
+    this.notice.set(this.router.getCurrentNavigation()?.extras.state?.['notice'] || '');
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       this.id = params.get('id') || '';
       void this.load();
@@ -132,6 +133,11 @@ export class DetailPage {
     this.edit.set(false);
     this.notice.set('Portfolio updated.');
     await this.load();
+  }
+  portfolioMissing() {
+    this.adding.set(false);
+    this.portfolio.set(null);
+    this.error.set('Portfolio no longer exists');
   }
   async savedTransaction() {
     this.adding.set(false);

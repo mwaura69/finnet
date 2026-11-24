@@ -4300,3 +4300,13 @@ main#main {
     height: 32px;
   }
 }
+
+/* Transaction entry */
+.trade-type-toggle { display:flex; gap:8px; margin:16px 0; }
+.trade-type-toggle label { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; border:1px solid #ccd4df; border-radius:8px; cursor:pointer; }
+.trade-type-toggle label:has(input:checked) { background:#e5f2df; border-color:#51b630; }
+.trade-type-toggle input { width:auto; margin:0; accent-color:#2e7d20; }
+.field-error { color:#b42318; font-size:13px; margin:4px 0 12px; }
+.field-error:empty { display:none; }
+.trade-spinner { display:inline-block; width:14px; height:14px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:trade-spin .7s linear infinite; }
+@keyframes trade-spin { to { transform:rotate(360deg); } }

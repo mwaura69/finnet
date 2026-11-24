@@ -38,7 +38,7 @@
       [disabled]="!p.permissions?.canRecordTransactions"
       (click)="adding.set(true)"
     >
-      <ft-icon name="plus" />Record transaction
+      <ft-icon name="plus" />Add transaction
     </button>
   </div>
 </section>
@@ -201,14 +201,14 @@
     } @if(!transactions().length){
     <div class="empty">
       <span class="empty-icon"><ft-icon name="swap" /></span>
-      <h3>The first trade sets things in motion</h3>
+      <h3>No transactions yet. Record your first trade.</h3>
       <p>Record a buy transaction to start building this portfolio's holdings.</p>
       <button
         class="button primary"
         [disabled]="!p.permissions?.canRecordTransactions"
         (click)="adding.set(true)"
       >
-        <ft-icon name="plus" />Record transaction
+        <ft-icon name="plus" />Add transaction
       </button>
     </div>
     } @else if(!filtered().length){
@@ -231,7 +231,7 @@
                 <span>{{ sort()==='instrument' ? (direction()===1 ? '↑' : '↓') : '↕' }}</span>
               </button>
             </th>
-            <th>Type</th>
+            <th [attr.aria-sort]="sortLabel('type')"><button class="sort-button" (click)="order('type')">Type <span>{{ sort()==='type' ? (direction()===1 ? '↑' : '↓') : '↕' }}</span></button></th>
             <th class="numeric" [attr.aria-sort]="sortLabel('quantity')">
               <button class="sort-button" (click)="order('quantity')">
                 Quantity
@@ -328,7 +328,7 @@
         [disabled]="!p.permissions?.canRecordTransactions"
         (click)="adding.set(true)"
       >
-        Record transaction
+        Add transaction
       </button>
     </div>
     }@else{
@@ -391,10 +391,11 @@
   [holdings]="summary()?.holdings || []"
   (closed)="adding.set(false)"
   (saved)="savedTransaction()"
+  (missing)="portfolioMissing()"
 />} @if(deletePortfolio() || deleting()){<ft-dialog
   (closed)="!deleteBusy() && deletePortfolio.set(false);!deleteBusy() && deleting.set(null)"
   ><h2 dialog-title>
-    {{ deletePortfolio() ? 'Delete this portfolio?' : 'Delete this transaction?' }}
+    {{ deletePortfolio() ? 'Delete this portfolio?' : 'Delete this ' + deleting()?.type + ' of ' + deleting()?.quantity + ' ' + deleting()?.instrument + '?' }}
   </h2>
   <p class="dialog-intro">
     @if(deletePortfolio()){<strong>{{ p.name }}</strong> and all its transactions will be
