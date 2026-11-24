@@ -1,19 +1,26 @@
 import jwt from 'jsonwebtoken';
 import { config } from '../config/index.js';
-export const signToken = (userId: string) =>
-  jwt.sign({}, config.secret, {
+export function signToken(userId: string, sessionId: string) {
+  return jwt.sign({ sid: sessionId, typ: 'access' }, config.secret, {
     subject: userId,
-    expiresIn: '2h',
+    expiresIn: config.session.accessSeconds,
     issuer: 'fintrack',
     audience: 'fintrack-web',
     algorithm: 'HS256',
   });
+}
 export function verifyToken(token: string) {
   const payload = jwt.verify(token, config.secret, {
     issuer: 'fintrack',
     audience: 'fintrack-web',
     algorithms: ['HS256'],
   });
-  if (typeof payload === 'string' || !payload.sub) throw new Error('Invalid token subject');
-  return payload.sub;
+  if (
+    typeof payload === 'string' ||
+    !payload.sub ||
+    typeof payload['sid'] !== 'string' ||
+    payload['typ'] !== 'access'
+  )
+    throw new Error('Invalid token');
+  return { userId: payload.sub, sessionId: payload['sid'] };
 }

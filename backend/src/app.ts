@@ -1,4 +1,5 @@
 import express from 'express';
+import { requireCsrf } from './security/cookies.js';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config/index.js';
@@ -14,15 +15,24 @@ export function createApp() {
   app.use(
     cors({
       origin: config.origin,
-      methods: ['GET', 'POST', 'PUT', 'DELETE'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      credentials: true,
+      methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+      allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
     }),
   );
-  app.use(express.json({ limit: '32kb' }));
+  app.use(express.json({ limit: '2mb' }));
   app.get('/health', (_req, res) =>
     res.json({ status: 'ok', mode: config.demo ? 'demo' : 'scaffold' }),
   );
-  app.use('/api', apiRouter);
+  app.use(
+    '/api',
+    (_req, res, next) => {
+      res.setHeader('Cache-Control', 'no-store');
+      next();
+    },
+    requireCsrf,
+    apiRouter,
+  );
   app.use(notFound);
   app.use(errorHandler);
   return app;

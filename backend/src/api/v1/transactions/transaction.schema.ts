@@ -35,3 +35,21 @@ export const transactionSchema = z
       .refine((d) => d <= today(), 'Trade date cannot be in the future.'),
   })
   .strict();
+const filterDate = z
+  .string()
+  .refine((value) => value === '' || realDate(value), 'Enter a valid YYYY-MM-DD date.')
+  .optional();
+export const transactionFilterSchema = z
+  .object({
+    instrument: z.string().trim().max(20).optional(),
+    type: z.enum(['BUY', 'SELL', '']).optional(),
+    from: filterDate,
+    to: filterDate,
+    sort: z.enum(['tradeDate', 'instrument', 'quantity', 'unitPrice', 'amount']).optional(),
+    direction: z.enum(['asc', 'desc']).optional(),
+  })
+  .strict()
+  .refine(
+    (value) => !value.from || !value.to || value.from <= value.to,
+    'The start date must be on or before the end date.',
+  );

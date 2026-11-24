@@ -5,12 +5,10 @@ export const authRateLimit = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   handler: (_req, res) =>
-    res
-      .status(429)
-      .json({
-        error: {
-          code: 'RATE_LIMITED',
-          message: 'Too many sign-in attempts. Try again in 15 minutes.',
-        },
-      }),
+    res.status(429).json({
+      error: {
+        code: 'RATE_LIMITED',
+        message: 'Too many sign-in attempts. Try again in 15 minutes.',
+      },
+    }),
 });

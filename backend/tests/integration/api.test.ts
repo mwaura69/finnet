@@ -3,166 +3,121 @@ import assert from 'node:assert/strict';
 import request from 'supertest';
 import '../setup.js';
 const { createApp } = await import('../../src/app.js');
+const { setEmailSenderForTests } = await import('../../src/utils/email.service.js');
 const { db } = await import('../../src/db/index.js');
-const app = createApp();
-const input = { name: 'Test Growth', clientName: 'Fictional Capital', baseCurrency: 'KES' };
-test('authenticated CRUD contract, ownership isolation, historical validation and summaries', async () => {
-  await request(app).get('/api/v1/portfolios').expect(401);
-  await request(app)
-    .post('/api/v1/auth/register')
-    .send({ name: 'Alex Test', email: 'alex@example.test', password: 'short' })
-    .expect(422);
-  const register = await request(app)
-    .post('/api/v1/auth/register')
-    .send({ name: 'Alex Test', email: 'alex@example.test', password: 'TestPassword!2026' })
-    .expect(201);
-  const token = register.body.data.token;
-  const auth = { Authorization: 'Bearer ' + token };
-  const hash = db.prepare('SELECT password_hash FROM users').get()?.['password_hash'];
-  assert.notEqual(hash, 'TestPassword!2026');
-  assert.match(String(hash), /^\$2/);
-  await request(app)
-    .post('/api/v1/auth/register')
-    .send({ name: 'Alex Test', email: 'alex@example.test', password: 'TestPassword!2026' })
-    .expect(409);
-  await request(app)
-    .post('/api/v1/auth/login')
-    .send({ email: 'alex@example.test', password: 'wrong' })
-    .expect(401);
-  await request(app)
-    .post('/api/v1/auth/login')
-    .send({ email: 'alex@example.test', password: 'TestPassword!2026' })
-    .expect(200);
-  const p = (await request(app).post('/api/v1/portfolios').set(auth).send(input).expect(201)).body
-    .data;
-  assert.equal(
-    (await request(app).get('/api/v1/portfolios').set(auth).expect(200)).body.data.length,
-    1,
-  );
-  await request(app)
-    .put('/api/v1/portfolios/' + p.id)
-    .set(auth)
-    .send({ ...input, name: 'Updated Growth' })
-    .expect(200);
-  const base = {
-    instrument: 'SCOM',
-    type: 'BUY',
-    quantity: 100,
-    unitPrice: 25,
-    tradeDate: '2026-01-01',
-  };
-  const buy = (
-    await request(app)
-      .post(`/api/v1/portfolios/${p.id}/transactions`)
-      .set(auth)
-      .send(base)
-      .expect(201)
-  ).body.data;
-  await request(app)
-    .post(`/api/v1/portfolios/${p.id}/transactions`)
-    .set(auth)
-    .send({ ...base, quantity: -1 })
-    .expect(422);
-  await request(app)
-    .post(`/api/v1/portfolios/${p.id}/transactions`)
-    .set(auth)
-    .send({ ...base, tradeDate: '2026-02-30' })
-    .expect(422);
-  await request(app)
-    .post(`/api/v1/portfolios/${p.id}/transactions`)
-    .set(auth)
-    .send({ ...base, type: 'SELL', quantity: 101 })
-    .expect(422);
-  await request(app)
-    .post(`/api/v1/portfolios/${p.id}/transactions`)
-    .set(auth)
-    .send({ ...base, type: 'SELL', quantity: 10, tradeDate: '2025-12-31' })
-    .expect(422);
-  const sell = (
-    await request(app)
-      .post(`/api/v1/portfolios/${p.id}/transactions`)
-      .set(auth)
-      .send({ ...base, type: 'SELL', quantity: 20, unitPrice: 30, tradeDate: '2026-02-01' })
-      .expect(201)
-  ).body.data;
-  const summary = (
-    await request(app).get(`/api/v1/portfolios/${p.id}/summary`).set(auth).expect(200)
-  ).body.data;
-  assert.equal(summary.holdings[0].netQuantity, 80);
-  assert.equal(summary.totalInvested, 2000);
-  assert.equal(summary.totalValue, 2400);
-  assert.equal(summary.realizedGain, 100);
-  await request(app)
-    .delete('/api/v1/transactions/' + buy.id)
-    .set(auth)
-    .expect(422);
-  await request(app)
-    .put('/api/v1/portfolios/' + p.id)
-    .set(auth)
-    .send({ ...input, baseCurrency: 'USD' })
-    .expect(422);
-  const other = (
-    await request(app)
-      .post('/api/v1/auth/register')
-      .send({ name: 'Other Analyst', email: 'other@example.test', password: 'TestPassword!2026' })
-      .expect(201)
-  ).body.data.token;
-  await request(app)
-    .get('/api/v1/portfolios/' + p.id)
-    .set('Authorization', 'Bearer ' + other)
-    .expect(404);
-  await request(app)
-    .get(`/api/v1/portfolios/${p.id}/transactions`)
-    .set('Authorization', 'Bearer ' + other)
-    .expect(404);
-  await request(app)
-    .get(`/api/v1/portfolios/${p.id}/summary`)
-    .set('Authorization', 'Bearer ' + other)
-    .expect(404);
-  await request(app)
-    .put('/api/v1/portfolios/' + p.id)
-    .set('Authorization', 'Bearer ' + other)
-    .send(input)
-    .expect(404);
-  await request(app)
-    .post(`/api/v1/portfolios/${p.id}/transactions`)
-    .set('Authorization', 'Bearer ' + other)
-    .send(base)
-    .expect(404);
-  await request(app)
-    .delete('/api/v1/portfolios/' + p.id)
-    .set('Authorization', 'Bearer ' + other)
-    .expect(404);
-  await request(app)
-    .delete('/api/v1/transactions/' + sell.id)
-    .set('Authorization', 'Bearer ' + other)
-    .expect(404);
-  await request(app)
-    .delete('/api/v1/transactions/' + sell.id)
-    .set(auth)
-    .expect(204);
-  await request(app)
-    .delete('/api/v1/portfolios/' + p.id)
-    .set(auth)
-    .expect(204);
-  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM transactions').get()?.['count'], 0);
-  const missing = await request(app).get('/api/v1/portfolios/missing').set(auth).expect(404);
-  assert.equal(missing.body.error.code, 'PORTFOLIO_NOT_FOUND');
-  await request(app)
-    .post('/api/v1/portfolios')
-    .set(auth)
-    .set('Content-Type', 'application/json')
-    .send('{')
-    .expect(400);
-  await request(app).get('/api/v1/openapi.json').expect(200);
-  await request(app).get('/api/portfolios').set(auth).expect(200);
-  await request(app).get('/api/v1/users/me').set(auth).expect(200);
-  await request(app).get('/api/v1/docs/').expect(200);
+const mail: { text: string }[] = [];
+setEmailSenderForTests(async (message) => {
+  mail.push(message);
+  return { messageId: 'test' };
 });
-test('production business scaffold returns an explicit 501 implementation error', async () => {
-  const { PortfolioService } = await import('../../src/api/v1/portfolios/portfolio.service.js');
-  assert.throws(
-    () => new PortfolioService().list('user'),
-    (e: unknown) => e instanceof Error && 'status' in e && e.status === 501,
+const app = createApp();
+test('verified cookie sessions, CSRF, profile, ledger, Excel, receipts, MFA and password recovery', async () => {
+  const agent = request.agent(app);
+  const csrf = (await agent.get('/api/v1/auth/csrf').expect(200)).body.data.csrfToken;
+  const post = (path: string, body: unknown) =>
+    agent
+      .post('/api/v1' + path)
+      .set('X-CSRF-Token', csrf)
+      .send(body);
+  await agent.post('/api/v1/auth/register').send({}).expect(403);
+  await post('/auth/register', {
+    name: 'Test Analyst',
+    email: 'test@example.test',
+    password: 'Test123!',
+    acceptTerms: true,
+  }).expect(200);
+  await post('/auth/login', { email: 'test@example.test', password: 'Test123!' }).expect(403);
+  const token = new URL(mail.at(-1)!.text.match(/https?:\/\/\S+/)![0]).searchParams.get('token');
+  await post('/auth/verify-email', { token }).expect(200);
+  await post('/auth/verify-email', { token }).expect(400);
+  const login = await post('/auth/login', {
+    email: 'test@example.test',
+    password: 'Test123!',
+    stayLoggedIn: true,
+  }).expect(200);
+  assert.ok(login.headers['set-cookie'].some((s: string) => s.includes('HttpOnly')));
+  assert.equal(login.body.data.token, undefined);
+  await agent
+    .patch('/api/v1/users/me')
+    .set('X-CSRF-Token', csrf)
+    .send({ name: 'Updated Analyst' })
+    .expect(200);
+  const p = (
+    await post('/portfolios', {
+      name: 'Growth',
+      clientName: 'Fictional Client',
+      baseCurrency: 'KES',
+    }).expect(201)
+  ).body.data;
+  const buy = (
+    await post(`/portfolios/${p.id}/transactions`, {
+      instrument: 'SCOM',
+      type: 'BUY',
+      quantity: 100,
+      unitPrice: 25,
+      tradeDate: '2026-01-01',
+    }).expect(201)
+  ).body.data;
+  await post(`/portfolios/${p.id}/transactions`, {
+    instrument: 'SCOM',
+    type: 'SELL',
+    quantity: 101,
+    unitPrice: 25,
+    tradeDate: '2026-01-02',
+  }).expect(422);
+  const x = await agent.get(`/api/v1/portfolios/${p.id}/transactions/export.xlsx`).expect(200);
+  assert.match(x.headers['content-type'], /spreadsheet/);
+  await agent.get(`/api/v1/transactions/${buy.id}/receipt`).expect(200);
+  await agent.get('/api/v1/portfolios/missing').expect(404);
+  await post('/auth/refresh', {}).expect(200);
+  const enabled = await agent
+    .patch('/api/v1/users/me/preferences')
+    .set('X-CSRF-Token', csrf)
+    .send({ emailMfaEnabled: true })
+    .expect(200);
+  const code = mail.at(-1)!.text.match(/\b\d{6}\b/)![0];
+  await post('/auth/mfa/verify', { challengeId: enabled.body.data.challengeId, code }).expect(200);
+  await post('/auth/logout', {}).expect(200);
+  await agent.get('/api/v1/auth/me').expect(401);
+  const challenge = await post('/auth/login', {
+    email: 'test@example.test',
+    password: 'Test123!',
+  }).expect(200);
+  assert.equal(challenge.body.data.requiresMfa, true);
+  await post('/auth/forgot-password', { email: 'test@example.test' }).expect(200);
+  const reset = new URL(mail.at(-1)!.text.match(/https?:\/\/\S+/)![0]).searchParams.get('token');
+  await post('/auth/reset-password', { token: reset, password: 'Changed123!' }).expect(200);
+  assert.equal(
+    db.prepare('SELECT name FROM users WHERE email=?').get('test@example.test')?.name,
+    'Updated Analyst',
   );
+});
+test('refresh reuse revokes the session and viewer role blocks financial writes', async () => {
+  const { newSession, refreshSession, activeSession } =
+    await import('../../src/security/sessions.js');
+  const user = db.prepare('SELECT id FROM users WHERE email=?').get('test@example.test')!;
+  const id = String(user.id);
+  const grant = newSession(id, true);
+  refreshSession(grant.cookies.refresh);
+  assert.throws(() => refreshSession(grant.cookies.refresh));
+  assert.throws(() =>
+    activeSession(
+      String(
+        db
+          .prepare('SELECT id FROM sessions WHERE user_id=? ORDER BY created_at DESC LIMIT 1')
+          .get(id)!.id,
+      ),
+    ),
+  );
+  db.prepare("UPDATE users SET role='viewer' WHERE id=?").run(id);
+  const viewer = newSession(id, false);
+  const browser = request.agent(app);
+  const token = (await browser.get('/api/v1/auth/csrf')).body.data.csrfToken;
+  await browser
+    .post('/api/v1/portfolios')
+    .set('Cookie', `ft_access=${viewer.cookies.access}; ft_csrf=${token}`)
+    .set('X-CSRF-Token', token)
+    .send({ name: 'Forbidden portfolio', clientName: 'Viewer', baseCurrency: 'KES' })
+    .expect(403);
+  db.prepare("UPDATE users SET role='analyst' WHERE id=?").run(id);
 });

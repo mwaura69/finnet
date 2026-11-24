@@ -66,4 +66,7 @@ if (!db.prepare('SELECT id FROM users WHERE email = ?').get(email)) {
     throw error;
   }
 } else console.log('Schema ready; existing demo account preserved.');
+db.prepare(
+  "UPDATE users SET email_verified=1,terms_accepted_at=COALESCE(terms_accepted_at,created_at),terms_version='2026-11-24' WHERE email=?",
+).run(email);
 db.close();

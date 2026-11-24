@@ -10,4 +10,10 @@ export interface PortfolioDto {
   unrealizedGain: number;
   holdingsCount: number;
   transactionCount: number;
+  permissions: {
+    canEdit: boolean;
+    canDelete: boolean;
+    canRecordTransactions: boolean;
+    canManageMembers: boolean;
+  };
 }
