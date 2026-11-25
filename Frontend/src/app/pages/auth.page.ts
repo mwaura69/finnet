@@ -1,6 +1,14 @@
 import { AuthLayout } from '../shared/auth-layout';
 import { PasswordStrength } from '../shared/password-strength';
-import { AfterViewInit, Component, ElementRef, inject, signal, viewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  OnDestroy,
+  Component,
+  ElementRef,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Auth, message } from '../core/api';
@@ -10,10 +18,11 @@ import { Icon } from '../shared/icon';
 
 @Component({
   selector: 'ft-auth-page',
+  host: { class: 'auth-entry-page' },
   imports: [FormsModule, RouterLink, Icon, AuthLayout, PasswordStrength],
   templateUrl: './auth.page.html',
 })
-export class AuthPage implements AfterViewInit {
+export class AuthPage implements AfterViewInit, OnDestroy {
   auth = inject(Auth);
   router = inject(Router);
   route = inject(ActivatedRoute);
@@ -38,25 +47,36 @@ export class AuthPage implements AfterViewInit {
   googleLoading = signal(true);
   googleError = signal('');
   googleButton = viewChild.required<ElementRef<HTMLElement>>('googleButton');
+  private disposeGoogle: (() => void) | null = null;
+  private destroyed = false;
+  ngOnDestroy() {
+    this.destroyed = true;
+    this.disposeGoogle?.();
+  }
   ngAfterViewInit() {
     void this.setupGoogle();
   }
   async setupGoogle() {
+    this.disposeGoogle?.();
+    this.disposeGoogle = null;
     this.googleLoading.set(true);
     this.googleError.set('');
     try {
       const config = await this.auth.configInfo();
+      if (this.destroyed) return;
       if (!config.googleClientId) {
         this.googleError.set(
           'Google sign-in is unavailable. Configure GOOGLE_CLIENT_ID in the backend environment and restart the API.',
         );
         return;
       }
-      await this.google.render(
+      const dispose = await this.google.render(
         this.googleButton().nativeElement,
         config.googleClientId,
         (credential) => void this.googleLogin(credential),
       );
+      if (this.destroyed) dispose();
+      else this.disposeGoogle = dispose;
     } catch (error) {
       this.googleError.set(message(error));
     } finally {

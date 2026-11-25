@@ -56,12 +56,24 @@ export class GoogleIdentity {
       auto_select: false,
       ux_mode: 'popup',
     });
-    window.google.accounts.id.renderButton(element, {
-      theme: 'outline',
-      size: 'large',
-      width: Math.min(372, Math.max(260, element.clientWidth)),
-      text: 'continue_with',
-      shape: 'rectangular',
-    });
+    let lastWidth = 0;
+    const renderButton = () => {
+      const width = Math.min(400, Math.floor(element.clientWidth));
+      if (width <= 0 || width === lastWidth) return;
+      lastWidth = width;
+      element.replaceChildren();
+      window.google!.accounts.id.renderButton(element, {
+        theme: 'outline',
+        size: 'large',
+        width,
+        text: 'continue_with',
+        shape: 'rectangular',
+      });
+    };
+    renderButton();
+    const observer =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(renderButton);
+    observer?.observe(element);
+    return () => observer?.disconnect();
   }
 }

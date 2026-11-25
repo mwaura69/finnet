@@ -189,6 +189,16 @@ Success responses use `{ "data": ... }`; deletes return 204. Errors use `{ "erro
 
 Get `/auth/csrf` first and retain cookies. Every mutation sends `X-CSRF-Token`. Complete request bodies and additional account/member endpoints are in [OpenAPI](backend/openapi.json) and the [Postman collection](backend/postman/FinTrack.postman_collection.json).
 
+### Postman downloads
+
+The collection and environments are committed under [`backend/postman`](backend/postman/README.md). Download the JSON files and import them into Postman:
+
+- [Collection JSON](https://raw.githubusercontent.com/mwaura69/finnet/main/backend/postman/FinTrack.postman_collection.json)
+- [Render environment JSON](https://raw.githubusercontent.com/mwaura69/finnet/main/backend/postman/FinTrack.Render.postman_environment.json)
+- [Localhost environment JSON](https://raw.githubusercontent.com/mwaura69/finnet/main/backend/postman/FinTrack.Local.postman_environment.json)
+
+Set your email/password locally after importing; credentials and token values are blank in Git. Keep Postman's cookie jar enabled.
+
 ## Interface and screenshots
 
 The UI includes login/registration, account verification/recovery/MFA, searchable portfolio CRUD, sortable/filterable and paginated transactions, holdings/allocation chart, live trade totals, profile/preferences, first-use tutorial, CSV/Excel export and printable receipts. Loading, empty and error states accompany API calls. Native dialogs and radios support keyboard interaction; hidden mobile navigation is inert. Amounts identify KES/USD, numeric columns align right, and return colors accompany explicit signs.
