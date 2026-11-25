@@ -3993,8 +3993,17 @@ main#main {
   color: transparent;
   background-clip: text;
 }
+/* Google supports at most 400px; keep the full auth form aligned to that width. */
+.auth-entry-page .reference-auth .auth-form-wrap {
+  width: 100%;
+  max-width: 400px;
+}
+.google-button-host {
+  width: 100%;
+  min-width: 0;
+}
 .google-button-host:empty {
-  display: none;
+  min-height: 0;
 }
 .reference-auth .demo-login {
   padding: 0;
