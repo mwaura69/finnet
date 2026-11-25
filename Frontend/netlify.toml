@@ -1,9 +1,37 @@
 [build]
-  base    = "frontend"
+  base = "Frontend"
   command = "npm run build"
   publish = "dist/fintrack/browser"
 
+[build.environment]
+  NODE_VERSION = "24"
+  API_URL = "/api/v1"
+
+# Keep API proxy ahead of the SPA fallback: cookies stay first-party on Netlify.
 [[redirects]]
-  from   = "/*"
-  to     = "/index.html"
+  from = "/api/*"
+  to = "https://finnet.onrender.com/api/:splat"
   status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/config.json"
+  [headers.values]
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"

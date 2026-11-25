@@ -1,119 +1,98 @@
-# Deployment and submission
+# Deployment: Netlify, Render and Supabase
 
-## Current status
+Frontend: https://finnet-nexus.netlify.app/ · API: https://finnet.onrender.com · Swagger: https://finnet.onrender.com/api/v1/docs/ · Repository: https://github.com/mwaura69/finnet.
 
-The frontend is deployed at https://finnet-nexus.netlify.app/ and the API at https://finnet.onrender.com. API health and CSRF initialization were checked through Netlify on 24 November 2026. The advertised demo credentials returned INVALID_CREDENTIALS. SMTP delivery on Render Free must be replaced with the HTTPS transport below. The local transport fix still needs deployment and a real inbox check.
+The core deployed demo has been exercised over HTTPS. This revision adds Supabase PostgreSQL support; do not assume the cloud switch succeeded until `/health` reports `database: "postgres"` and login/holdings work on the deployed revision.
 
-## Recommended topology
+## Supabase database connection
 
-Use a single Node 24 backend instance with a persistent SQLite disk and an Angular static frontend. An HTTPS reverse proxy may host both behind one origin and route `/api/*` to the backend. This avoids cross-origin browser setup. Alternatively, serve Angular on a static host and configure its runtime API URL to your separate HTTPS backend origin plus `/api/v1`.
+1. Use the Supabase project selected by the candidate. In **Connect → Transaction pooler**, copy its PostgreSQL URI. Use the database password, not an anon/publishable/secret API key. URL-encode special characters in the password.
+2. Save the complete URI **privately in Render as DATABASE_URL**. The Supabase pooler is suitable for IPv4 hosts; the direct database host can require IPv6. Only the backend connects to PostgreSQL. `SUPABASE_URL`, publishable/secret keys and JWKS settings are not needed by this adapter; FinTrack retains its own cookie authentication.
+3. TLS certificate verification stays enabled for remote hosts. If the provider requires its CA, save the downloaded CA as a Render secret file and set `DATABASE_CA_FILE` to its path. Do not disable certificate verification. See [Supabase connections](https://supabase.com/docs/guides/database/connecting-to-postgres).
+4. Application tables live in a dedicated `fintrack` schema, preserving unrelated tables in an existing Supabase project. On startup the API applies ordered migrations in `backend/src/db/migrations/postgres` using its database connection. Application tables enable RLS with no anon/authenticated Data API policies. Use the backend database-owner/pooler role; browser clients never query those tables directly.
+5. Migration and application transactions use one leased connection. Serializable isolation with bounded retries protects chronological SELL validation and refresh rotation. Changing `DATABASE_URL` does not automatically copy SQLite data.
 
-The included Docker images provide a starting point. `compose.yaml` is a **local demo profile**, bound to loopback, and must be changed for production. It is not a cloud deployment. The API image builds the TypeScript backend; the frontend image builds Angular and serves it through nginx with SPA fallback. SQLite lives on a named local volume in Compose.
+## Render backend
 
-## Backend host
+Node version: 24.x. Build from the repository root:
 
-1. Run `npm run build --prefix backend` and `npm test --prefix backend` from the repository root.
-2. Create your hosting service and persistent disk. Build from the repository root with `backend/Dockerfile`, or run `npm ci` and `npm run build -w backend`. Start with `npm run start -w backend`. The backend build copies SQL migrations into `dist/db/migrations`; keep `backend/openapi.json` beside `dist`.
-3. Set platform variables: `NODE_ENV=production`, `DEMO_MODE=false`, `PORT`, `DATABASE_PATH` pointing inside the persistent disk, `FRONTEND_ORIGIN` to the exact frontend HTTPS origin, and a random `JWT_SECRET` of at least 32 characters. Never commit the secret. A production startup with the example placeholder or demo mode fails deliberately.
-4. Mount the persistent directory writable by the Node process. The image runs as the `node` user; make sure the host's volume UID/permissions match. Use one instance for this synchronous SQLite starter, not multiple replicas sharing an ephemeral filesystem.
-5. Seed the fictional demo account once: run `node dist/db/seeds/index.js` from `backend`, or `npm run db:setup` from the `backend` source directory. Set `DEMO_EMAIL`/`DEMO_PASSWORD` in the host environment first if changing the documented demo login. The seed does not overwrite an existing account/password.
-6. Expose HTTPS and check `/health`, `/api/v1/docs/`, and `/api/v1/openapi.json`. Verify all authenticated endpoints against the production service. Adjust Express trust-proxy only to the known topology if required by your host's rate limiter; do not blindly trust all proxies.
+```sh
+npm ci
+npm run build -w backend
+```
 
-SQLite on an ephemeral serverless filesystem will lose data. Choose a persistent-volume host, or migrate the service/repository layer to PostgreSQL. The included SQL is SQLite-specific and is not a PostgreSQL schema.
+Start from repository root with `npm run start -w backend`. If Render's root directory is `backend`, build using `cd .. && npm ci && npm run build -w backend`, and start using `npm start`.
 
-## Frontend host
-
-1. Run `npm ci` and `npm run build -w Frontend` from the repository root.
-2. Publish `Frontend/dist/fintrack/browser`. Configure SPA fallback so `/portfolios/...` and `/register` return `index.html` on refresh.
-3. With same-origin reverse proxying, leave `config.json` as `{ "apiBaseUrl": "/api/v1" }`. The supplied nginx config expects a Docker service named `api` on port 3000.
-4. With a separate API origin, edit the deployed `config.json` to `{ "apiBaseUrl": "https://YOUR-API-HOST/api/v1" }`. This is runtime configuration; no Angular rebuild is needed. Set `Cache-Control: no-store` on this file. Configure backend CORS with the exact frontend origin.
-5. If using the included CSP with a different API origin, add that origin to `connect-src`. The shipped nginx policy permits same-origin API calls only. Protect production with HTTPS and deployment-appropriate headers.
-6. Test sign-in, register, portfolio CRUD, recording and removing trades, validation errors, filtered CSV export, holdings and reload after navigation on desktop and 375px mobile.
-
-## Git and assessment submission
-
-- Push the real incremental commits to your own GitHub/GitLab/Bitbucket repository.
-- Open and merge a feature pull/merge request. The scaffold's branch is available for this; a local branch is not a hosted PR.
-- Add actual screenshots to the README if your final design changes.
-- Fill in the table below with verified public URLs. Do not invent a live URL or mark the scaffold as complete.
-- Keep the deployment available for at least 14 days after submission. Submit before **25 November 2026, 23:59 EAT**, and follow the brief's no-commits-after-deadline rule.
-- Submit repository URL, frontend URL, API/Swagger URL, actual demo credentials, actual hours spent and reviewer notes. Sending the recruitment email is the candidate's action, not performed by this scaffold.
-
-| Submission item         | Actual value to fill in                        |
-| ----------------------- | ---------------------------------------------- |
-| Repository URL          | Pending                                        |
-| Merged PR URL           | Pending                                        |
-| Live frontend URL       | https://finnet-nexus.netlify.app/                |
-| Live API / Swagger URL  | https://finnet.onrender.com/api/v1/docs/          |
-| Demo email/password     | Verify seeded values on your deployed database |
-| Hours spent             | Record your actual time                        |
-| Retain deployment until | At least 14 days after submission              |
-
-## Production follow-ups
-
-Use decimal arithmetic for strict accounting, backup/restore the SQLite database, make migrations version-aware, establish deployment-specific proxy limits, decide token revocation/cookie policy, and review transitive dependencies. A market price feed is optional; keep the indicative valuation disclosure unless one is genuinely connected.
-
-## Email on Render Free: Resend HTTPS transport
-
-Render Free blocks outbound SMTP ports 25, 465 and 587. Keeping Gmail credentials on this host does not remove the port restriction. Use the `resend` transport over HTTPS instead. Sources: [Render Free limitations](https://render.com/docs/free), [Resend sending API](https://resend.com/docs/api-reference/emails/send-email).
-
-1. Create a Resend account and verify a domain you control using its DNS records. Create a sending API key. Do not put the key in Git, Netlify frontend variables or chat.
-2. In **Render → finnet → Environment**, set:
-
-   ```dotenv
-   MAIL_DELIVERY=resend
-   RESEND_API_KEY=<your actual sending API key>
-   MAIL_FROM=FinTrack <no-reply@your-verified-domain.example>
-   FRONTEND_ORIGIN=https://finnet-nexus.netlify.app
-   ```
-
-   Replace the example sender with a real address on the domain verified in Resend. SMTP variables are ignored by the Resend transport. Retain your existing production JWT/MFA secrets and database configuration.
-3. Deploy the commit containing the HTTPS transport, save the variables and restart/redeploy the service. Setting `MAIL_DELIVERY=resend` on an older deployment will fail environment validation until this code is deployed.
-4. Check `https://finnet-nexus.netlify.app/api/v1/auth/config`: `data.emailDelivery` should be `resend`. This response never returns the API key.
-5. Use **Resend verification** for the account created during the earlier SMTP failure. Registration saves the account before attempting email delivery; another registration can therefore return EMAIL_IN_USE. Check the provider delivery dashboard, receive the email, follow its token link and sign in.
-6. Verify password reset, MFA and transaction notifications after the initial confirmation flow works. Tests use mocked providers; a successful test suite does not prove inbox delivery.
-
-The default `onboarding@resend.dev` sender can send only to the email associated with your Resend account. Public registration requires a verified domain; a Gmail address or your Netlify subdomain is not a domain you can verify with DNS. See [Resend testing sender restrictions](https://resend.com/docs/knowledge-base/403-error-resend-dev-domain).
-
-Requests time out after 15 seconds. Provider rejections return sanitized errors; the server logs only provider/status, not API keys, recipients or email contents. Existing SMTP and private development-outbox delivery remain available. There is no automatic fallback that reports an unsent production email as successful.
-
-### Deployed demo account
-
-Run `node dist/db/seeds/index.js` from the backend working directory against the running service's actual database, with `DEMO_EMAIL` and `DEMO_PASSWORD` set as desired. The seed preserves existing accounts and passwords. It must run against the same database used by the API; seeding only during the build does not ensure the running instance has that database. Do not enable development DEMO_MODE in production.
-
-Render Free has no persistent disk. This project's SQLite database can disappear on redeploy/restart, including accounts and transactions. Keep a persistent-disk service or migrate the database to a persistent hosted database before relying on retained data. See [Render Free limitations](https://render.com/docs/free).
-
-### Resend delivery troubleshooting
-
-- In Render's individual environment value editor, enter `FinTrack <address@verified-domain>` as MAIL_FROM without surrounding quote characters or backslashes. Quotes used in a `.env` file are parsed by dotenv; quotes typed into a hosting dashboard value can become literal characters.
-- Verify the exact sending domain (or subdomain) in the Resend account associated with the sending key. The sender mailbox does not need its own inbox. A key restricted to one domain must permit that domain.
-- Confirm `/api/v1/auth/config` reports `emailDelivery: "resend"` after deployment. SMTP settings have no effect in this mode.
-- Render logs distinguish provider rejections (HTTP status only) from network, timeout and invalid-response failures. HTTP 400, 401, 403 and 422 are surfaced as provider configuration failures. Unknown failures remain sanitized. Share only provider/status/reason/code fields for support, never credentials or message bodies.
-- After correcting delivery, use Resend verification for a previously registered account. Rotate any credentials shared in public or chat and update them directly in the hosting dashboard.
-
-### Forwarded headers and rate limiting
-
-`TRUST_PROXY_HOPS` sets Express's bounded numeric proxy trust before middleware runs. It defaults to `0` for direct/local hosting. For the nearest Render reverse proxy, set `TRUST_PROXY_HOPS=1` in Render and redeploy this version. Verify the forwarding topology: one hop selects the right-most forwarded address, which might itself be another proxy when Netlify or additional Render routing is present. Only increase the hop count after confirming each trusted hop overwrites or appends forwarded client information safely; the directly accessible Render URL must remain safe too. Never use unrestricted `trust proxy=true` or disable rate-limit validation to hide the warning.
-
-This corrects forwarded-address handling; it does not change email delivery. A 200 response from resend verification deliberately hides whether the account exists or is already verified. Confirm actual delivery in the recipient inbox and the email provider dashboard.
-
-References: [Express proxy configuration](https://expressjs.com/en/guide/behind-proxies/), [express-rate-limit proxy troubleshooting](https://express-rate-limit.mintlify.app/guides/troubleshooting-proxy-issues).
-
-Verification resend emits a private `verification_resend` event tied to the HTTP request ID. `outcome=not_eligible` means no email was attempted (the account is unknown or already verified); `accepted` means the configured transport accepted the message, not that an inbox received it; `failed` means delivery threw an error. The public response for ineligible accounts stays generic. These logs contain no email addresses, message bodies or tokens.
-
-### Reliable demo initialization on Render
-
-The regular server start runs migrations but historically did not seed an account. To initialize the advertised fictional workspace on the running database, deploy the startup-seeding change and set these in Render:
+Set environment values in Render, never in the frontend or Git:
 
 ```dotenv
+NODE_ENV=production
+DEMO_MODE=false
+DATABASE_URL=<private Supabase PostgreSQL pooler URI>
+FRONTEND_ORIGIN=https://finnet-nexus.netlify.app
+TRUST_PROXY_HOPS=1
+JWT_SECRET=<separately generated random secret, at least 32 characters>
+MFA_HMAC_SECRET=<another independent random secret, at least 32 characters>
+MAIL_DELIVERY=resend
+RESEND_API_KEY=<private sending API key>
+MAIL_FROM=FinTrack <address@your-verified-domain>
+GOOGLE_CLIENT_ID=<Google web client ID, if enabling Google>
 SEED_DEMO_ON_START=true
 DEMO_EMAIL=demo@fintrack.local
 DEMO_PASSWORD=FinTrackDemo!2026
-DEMO_MODE=false
 ```
 
-Keep the existing start command (`npm start` from backend, or `npm run start -w backend` from the repository root). Seeding runs before listening, against the exact same `DATABASE_PATH` connection as the API. A missing account receives three fictional portfolios, BUYs and partial SELLs, confirmed email status and disabled marketing/transaction emails. Login still verifies the real password hash and issues normal cookie sessions; this flag does not enable an authentication bypass.
+Render supplies the listening port; the API honors `PORT`. Enter MAIL_FROM in an individual value editor without surrounding quote characters/backslashes. Retain your own real environment values; the angle-bracket examples above are placeholders.
 
-The operation is idempotent: existing accounts, passwords, MFA settings and portfolio edits are preserved. If logs say the existing password differs from DEMO_PASSWORD, initialization intentionally did not reset it. Correct the configured credentials for that existing account or create a separate fictional demo account and align the frontend's advertised login. Do not delete the database or disable authentication to repair this.
+`TRUST_PROXY_HOPS` is bounded numeric trust, not `true`. One hop trusts the nearest reverse proxy. Confirm the actual forwarding topology before increasing the count: the Netlify and directly accessible Render paths can differ. Never disable express-rate-limit validation to hide a warning. [Express proxy guidance](https://expressjs.com/en/guide/behind-proxies/).
 
-Alternatively, run `npm run db:setup:prod` from backend after building, against the running database. Seeding only in a build step is insufficient when build and runtime filesystems differ. Render Free's SQLite data can still be lost on replacement/redeploy; startup seeding only restores the missing fictional demo, not registered users or their data. Persistent database storage is still required for retention.
+Demo seeding runs on the running API database before listening. It creates a missing verified fictional account and sample BUY/partial SELL records, with transaction emails disabled. It does not reset existing passwords, MFA preferences or edits. A password mismatch is logged without the password. Keep development `DEMO_MODE=false` in production; seeding does not bypass authentication.
+
+Deploy from the repository's main branch and enable Render's automatic deploy after CI/review. Record the exact deployed commit in verification notes. Build output includes migrations and the OpenAPI document is served beside the compiled tree.
+
+## Netlify frontend
+
+Use `Frontend/netlify.toml`: base `Frontend`, command `npm run build`, publish `dist/fintrack/browser`, Node 24. The build defaults `API_URL=/api/v1`; its prebuild script generates the public environment/runtime configuration. It contains no secrets.
+
+The `/api/*` rewrite to Render comes **before** the SPA fallback. Keep it configured in the repository rather than only in dashboard UI. This makes session cookies first-party at the Netlify hostname and avoids cross-site-cookie restrictions. `config.json` uses no-store; `sw.js` uses no-cache. The PWA excludes authenticated/API data from caches.
+
+Backend CORS is restricted to the exact Netlify origin and credentials are allowed. All mutation requests still need a signed CSRF cookie and matching X-CSRF-Token header. Changing hosts requires changing FRONTEND_ORIGIN and the proxy target as appropriate.
+
+## Email and Google
+
+Render Free blocks outbound SMTP ports 25, 465 and 587; use Resend HTTPS. Add and verify your sender domain in Resend, then use a sending key allowed for that domain. The default resend.dev sender is limited to testing your own account email; public registration requires a verified domain. [Resend domain rules](https://resend.com/docs/knowledge-base/403-error-resend-dev-domain).
+
+Account emails include single-use token buttons plus a plain-text alternative. Registration stores the account before sending email, so a failed delivery can leave an unverified account: use Resend verification after fixing delivery. MFA codes expire after ten minutes; reset/set links after thirty minutes; verification links after twenty-four hours.
+
+Google's web client must allow the Netlify origin. Backend GOOGLE_CLIENT_ID must match the token audience. The application validates Google credentials on the server. Existing email/password accounts are not automatically linked to Google identities.
+
+A public generic 200 from resend/forgot-password is not proof of delivery. Private logs for `verification_resend` include the request ID and `outcome`: `not_eligible` (unknown/already verified), `accepted` (transport accepted), or `failed`. Provider logs expose HTTP status or allowlisted connection failure codes, never tokens/message bodies/keys. Verify the recipient inbox and provider delivery/bounce records.
+
+## Preserving existing SQLite data
+
+A new Supabase database starts empty. The startup seed creates only the fictional demo; it does not migrate registered users or their portfolios. Keep the old source available until you have verified the new database. Render Free's old filesystem can disappear on redeploy; do not claim a migration of unavailable data.
+
+If you have a source SQLite file that must be retained, use the explicit offline import before adding data to the target:
+
+```sh
+# In backend, after building; set DATABASE_URL privately first.
+SQLITE_SOURCE_PATH=/private/path/fintrack.sqlite node dist/db/migrate-sqlite.js
+```
+
+The importer opens the source read-only, requires empty FinTrack target tables, preserves IDs/password hashes/order/preferences, and imports in one transaction. It never deletes target rows or prints row contents. Failed imports roll back. Do not commit or upload a database snapshot to the public repository. Verify login/holdings and take provider backups before switching a real service.
+
+## Local Docker / SQLite
+
+`docker compose up --build` seeds and runs the real SQLite-backed API with a named persistent volume, plus nginx/Angular on http://localhost:8080. It uses development settings and binds published ports to loopback. Local email delivery defaults to a private outbox. Docker images/container execution require a running Docker daemon; configuration can be checked with `docker compose config --quiet`.
+
+## Live acceptance checks
+
+1. `/health` returns 200 and `database: "postgres"` after Supabase deployment.
+2. Netlify `/api/v1/auth/config`, `/auth/csrf`, Swagger and OpenAPI remain reachable over HTTPS.
+3. Demo login succeeds, returns three portfolios, and summaries/transactions load after refresh.
+4. In a fictional QA portfolio, create BUY, partial SELL, reject oversell, verify holdings/chart, export CSV/Excel and confirm delete safeguards. Remove QA data when finished.
+5. Verify registration email and password recovery in a real inbox; Google selection/MFA require their real providers.
+6. Review keyboard focus, dialogs, contrast, loading/empty/error states at desktop and 375px. Refresh deep links. Browser automation failure is not a passed visual test.
+7. Check CI for the deployed commit. Rotate every credential previously shared in chat or committed to history. Current blank examples do not revoke historical secrets.
+
+Keep frontend, API and database available for at least fourteen days after submission. For a 25 November 2026 submission, keep them through 9 December 2026. Candidate sends the reviewed submission email by 25 November 2026, 23:59 EAT; do not make later assessment commits.

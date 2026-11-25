@@ -13,3 +13,7 @@ backend/data/*
 playwright-report/
 test-results/
 out-tsc/
+
+# Generated Angular build configuration and local API-client exports
+Frontend/src/app/environments/environment.prod.ts
+/FinTrack*.postman_*.json

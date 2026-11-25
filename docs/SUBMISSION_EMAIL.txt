@@ -1,0 +1,27 @@
+Subject: Software Developer Technical Assessment – FinTrack
+
+Hello Finnet recruitment team,
+
+Please find my FinTrack assessment submission below.
+
+Repository: https://github.com/mwaura69/finnet
+Live frontend: https://finnet-nexus.netlify.app/
+Live API / health: https://finnet.onrender.com/health
+Swagger documentation: https://finnet.onrender.com/api/v1/docs/
+Demo email: demo@fintrack.local
+Demo password: FinTrackDemo!2026
+Approximate time spent: 14 hours
+
+Reviewer notes:
+- Angular and Express/TypeScript with PostgreSQL support for Supabase and SQLite for quick local setup.
+- The demo includes three fictional portfolios, BUYs and partial SELLs.
+- Holdings use moving-average cost; latest recorded trade prices provide indicative valuation, not live market prices.
+- The README includes setup, architecture, API overview, screenshots, tests, assumptions and trade-offs.
+- AI assistance from OpenAI Codex is disclosed in the README. I have reviewed the code and am prepared to discuss and extend it.
+
+I will keep the deployment available for at least 14 days after submission.
+
+Kind regards,
+[Candidate name]
+
+CANDIDATE CHECK BEFORE SENDING: replace your name; confirm the deployed revision, working demo login, Supabase-backed health, CI status and secret rotation. This draft has not been sent.

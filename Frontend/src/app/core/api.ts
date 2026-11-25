@@ -45,7 +45,6 @@ export class ApiConfig {
         credentials: 'include',
         cache: 'no-store',
       });
-      console.log(response);
       if (!response.ok)
         throw new Error('Could not initialize the secure session. Please try again.');
       const payload = await response.json();

@@ -1,33 +1,18 @@
-# Git workflow
+# Git workflow and review evidence
 
-The repository was initialized locally on `main`. Implementation commits were created incrementally on `feat/fintrack-foundation`. Commit author `FinTrack Scaffold <scaffold@fintrack.local>` explicitly identifies generated starter work; it does not impersonate you. Set your own author identity for your subsequent commits.
+Repository: https://github.com/mwaura69/finnet (public).
+
+Feature branches and meaningful incremental commits are present. Hosted merged PRs were verified through GitHub's public API, including [mail/seed work, PR #4](https://github.com/mwaura69/finnet/pull/4), [Google terms fix, PR #3](https://github.com/mwaura69/finnet/pull/3), and [deployment configuration, PR #1](https://github.com/mwaura69/finnet/pull/1). This satisfies the feature-branch-through-PR requirement.
+
+For later changes, branch from the current main, commit coherent changes, push, and open a PR. Run `npm run check` before merging. The assessment completion revision also includes CI for pull requests and main/feature pushes. Confirm the GitHub Actions run succeeds on the commit actually deployed.
 
 ```sh
-git log --oneline --all --graph
 git status
-git config user.name "YOUR NAME"
-git config user.email "YOUR VERIFIED EMAIL"
+git log --oneline --graph --all
+npm run check
+git push origin HEAD
 ```
 
-Create an **empty** repository under your own GitHub/GitLab/Bitbucket account. Do not initialize another README remotely; that would create an unrelated history. Then:
+Do not commit `.env`, database files, email outbox files, API keys or session tokens. A credential was previously exposed in example-file history and credentials were also shared in chat; they must be revoked/rotated with their providers. Removing current values does not invalidate old credentials. No history rewrite is performed automatically because it would disrupt the shared repository and existing PRs.
 
-```sh
-git remote add origin YOUR_REPOSITORY_GIT_URL
-git push -u origin main
-git push -u origin feat/fintrack-foundation
-```
-
-Open a pull request from `feat/fintrack-foundation` into `main` on your provider. Explain the frontend-complete scaffold, demo adapter and remaining business service honestly. Review and merge it through that provider. This is the assessment's hosted feature-branch/PR requirement; the scaffold does not fabricate a PR URL or a merge.
-
-For your business API work:
-
-```sh
-git switch main
-git pull --ff-only
-git switch -c feat/production-portfolio-api
-# Implement and test each coherent change, then commit it.
-git add backend/src/api/v1/portfolios/portfolio.service.ts
-git commit -m "feat(api): implement owned portfolio CRUD"
-```
-
-Commit additional transaction and summary behavior separately when it works. Run `npm run check` before pushing. Never commit `.env`, database files or tokens. Record the eventual merged PR URL in `docs/DEPLOYMENT.md`. Make your final assessment commit before the deadline stated in the brief.
+The brief's deadline is 25 November 2026, 23:59 EAT. Its submission guidance asks for no later commits. The candidate reviews and submits the repository, deployed URLs, demo credentials, approximate hours and reviewer notes.
