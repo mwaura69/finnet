@@ -11,7 +11,8 @@
     "db:setup": "tsx src/db/seeds/index.ts",
     "test": "tsx --test tests/unit/*.test.ts tests/integration/*.test.ts",
     "lint": "eslint src tests --ext .ts",
-    "db:setup:prod": "node dist/db/seeds/index.js"
+    "db:setup:prod": "node dist/db/seeds/index.js",
+    "test:postgres": "TEST_DATABASE_ENGINE=postgres tsx --test --test-concurrency=1 tests/unit/*.test.ts tests/integration/*.test.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -24,17 +25,20 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^10.6.1",
+    "pg": "^8.23.1",
     "pino": "^10.1.0",
     "swagger-ui-express": "^5.0.1",
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.6.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.10.1",
     "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.23.1",
     "@types/supertest": "^6.0.3",
     "@types/swagger-ui-express": "^4.1.8",
     "@typescript-eslint/eslint-plugin": "^8.46.0",

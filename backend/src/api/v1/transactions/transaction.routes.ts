@@ -15,14 +15,12 @@ transactionRouter.use(
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     handler: (_req, res) =>
-      res
-        .status(429)
-        .json({
-          error: {
-            code: 'RATE_LIMITED',
-            message: 'Too many transaction requests. Please wait a minute.',
-          },
-        }),
+      res.status(429).json({
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Too many transaction requests. Please wait a minute.',
+        },
+      }),
   }),
 );
 transactionRouter

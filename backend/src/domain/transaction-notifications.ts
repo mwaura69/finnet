@@ -1,6 +1,6 @@
 import { renderEmail } from '../utils/email.template.js';
 import { randomUUID } from 'node:crypto';
-import type { DatabaseSync } from 'node:sqlite';
+import type { Database } from '../db/connection.js';
 import type { LedgerTransaction } from '../types/index.js';
 import type { PortfolioRecord } from './business-access.js';
 export interface NotificationMessage {
@@ -15,14 +15,14 @@ const money = (value: number, currency: string) =>
 export const receiptNumber = (id: string) =>
   'FT-' + id.replace(/-/g, '').slice(0, 12).toUpperCase();
 /** Queue within the ledger write transaction. */
-export function queueTransactionNotification(
-  db: DatabaseSync,
+export async function queueTransactionNotification(
+  db: Database,
   actorId: string,
   portfolio: PortfolioRecord,
   transaction: LedgerTransaction,
   action: 'recorded' | 'deleted',
 ) {
-  const recipients = db
+  const recipients = await db
     .prepare('SELECT id,name,email FROM users WHERE id IN (?,?) AND transaction_emails=1')
     .all(actorId, portfolio.user_id);
   const now = new Date().toISOString();
@@ -51,26 +51,28 @@ export function queueTransactionNotification(
       paragraphs: text.split('\n\n'),
       note: 'Transaction email preferences are available in your profile. Security emails remain enabled.',
     });
-    db.prepare(
-      'INSERT INTO notification_outbox(id,event_key,recipient_user_id,recipient_email,subject,text_body,html_body,next_attempt_at,created_at) VALUES(?,?,?,?,?,?,?,?,?)',
-    ).run(
-      randomUUID(),
-      `${transaction.id}:${action}`,
-      String(user['id']),
-      String(user['email']),
-      subject,
-      text,
-      html,
-      now,
-      now,
-    );
+    await db
+      .prepare(
+        'INSERT INTO notification_outbox(id,event_key,recipient_user_id,recipient_email,subject,text_body,html_body,next_attempt_at,created_at) VALUES(?,?,?,?,?,?,?,?,?)',
+      )
+      .run(
+        randomUUID(),
+        `${transaction.id}:${action}`,
+        String(user['id']),
+        String(user['email']),
+        subject,
+        text,
+        html,
+        now,
+        now,
+      );
   }
 }
 /** Durable at-least-once delivery; retry from a periodic worker. */
 export class NotificationOutbox {
   private draining = false;
   constructor(
-    private db: DatabaseSync,
+    private db: Database,
     private sender: NotificationSender,
   ) {}
   async drain(limit = 20) {
@@ -81,26 +83,21 @@ export class NotificationOutbox {
     try {
       for (let i = 0; i < limit; i++) {
         const now = new Date().toISOString(),
-          lockUntil = new Date(Date.now() + 60_000).toISOString();
-        let row: Record<string, unknown> | undefined;
-        this.db.exec('BEGIN IMMEDIATE');
-        try {
-          row = this.db
+          lockUntil = new Date(Date.now() + 60000).toISOString();
+        const row = await this.db.transaction(async () => {
+          const claimed = await this.db
             .prepare(
               'SELECT * FROM notification_outbox WHERE sent_at IS NULL AND next_attempt_at<=? AND (locked_until IS NULL OR locked_until<?) ORDER BY created_at,id LIMIT 1',
             )
             .get(now, now);
-          if (row)
-            this.db
+          if (claimed)
+            await this.db
               .prepare(
                 'UPDATE notification_outbox SET locked_until=?,attempts=attempts+1 WHERE id=?',
               )
-              .run(lockUntil, String(row['id']));
-          this.db.exec('COMMIT');
-        } catch (error) {
-          this.db.exec('ROLLBACK');
-          throw error;
-        }
+              .run(lockUntil, String(claimed['id']));
+          return claimed;
+        });
         if (!row) break;
         try {
           await this.sender({
@@ -109,15 +106,15 @@ export class NotificationOutbox {
             text: String(row['text_body']),
             html: String(row['html_body']),
           });
-          this.db
+          await this.db
             .prepare(
               'UPDATE notification_outbox SET sent_at=?,locked_until=NULL,last_error=NULL WHERE id=?',
             )
             .run(new Date().toISOString(), String(row['id']));
           sent++;
         } catch {
-          const delay = Math.min(3_600_000, 30_000 * 2 ** Math.min(Number(row['attempts']), 7));
-          this.db
+          const delay = Math.min(3600000, 30000 * 2 ** Math.min(Number(row['attempts']), 7));
+          await this.db
             .prepare(
               'UPDATE notification_outbox SET locked_until=NULL,next_attempt_at=?,last_error=? WHERE id=?',
             )

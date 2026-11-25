@@ -1,23 +1,28 @@
 import { randomUUID } from 'node:crypto';
-import type { DatabaseSync } from 'node:sqlite';
+import type { Database } from '../connection.js';
 import bcrypt from 'bcryptjs';
-
 /** Idempotent: create only missing accounts. Never reset an existing user's credentials or preferences. */
-export function seedDemo(connection: DatabaseSync, options: { email: string; password: string }) {
-  const email = options.email.trim().toLowerCase();
-  const password = options.password;
-  if (!connection.prepare('SELECT id FROM users WHERE email = ?').get(email)) {
-    const user = randomUUID();
-    const ids = { growth: randomUUID(), income: randomUUID(), global: randomUUID() };
-    connection.exec('BEGIN');
-    try {
-      connection
+export async function seedDemo(
+  connection: Database,
+  options: {
+    email: string;
+    password: string;
+  },
+) {
+  return connection.transaction(async () => {
+    const email = options.email.trim().toLowerCase();
+    const password = options.password;
+    if (!(await connection.prepare('SELECT id FROM users WHERE email = ?').get(email))) {
+      const user = randomUUID();
+      const ids = { growth: randomUUID(), income: randomUUID(), global: randomUUID() };
+
+      await connection
         .prepare('INSERT INTO users(id,name,email,password_hash) VALUES(?,?,?,?)')
         .run(user, 'Alex Morgan', email, bcrypt.hashSync(password, 12));
       const insert = connection.prepare(
         'INSERT INTO portfolios(id,user_id,name,client_name,base_currency,created_at) VALUES(?,?,?,?,?,?)',
       );
-      insert.run(
+      await insert.run(
         ids.growth,
         user,
         'East Africa Growth',
@@ -25,7 +30,7 @@ export function seedDemo(connection: DatabaseSync, options: { email: string; pas
         'KES',
         '2026-08-12T08:00:00Z',
       );
-      insert.run(
+      await insert.run(
         ids.income,
         user,
         'Steady Income',
@@ -33,7 +38,7 @@ export function seedDemo(connection: DatabaseSync, options: { email: string; pas
         'KES',
         '2026-09-04T08:00:00Z',
       );
-      insert.run(
+      await insert.run(
         ids.global,
         user,
         'Global Opportunities',
@@ -65,31 +70,29 @@ export function seedDemo(connection: DatabaseSync, options: { email: string; pas
         ['p-global', 'VOO', 'SELL', 5, 52500, '2026-11-08'],
         ['p-global', 'MSFT', 'BUY', 20, 42000, '2026-11-10'],
       ];
-      rows.forEach((r, i) =>
-        tx.run(
+      for (const [i, r] of rows.entries())
+        await tx.run(
           randomUUID(),
           portfolioIds[r[0]],
           ...r.slice(1),
           `2026-11-20T08:00:${String(i).padStart(2, '0')}Z`,
-        ),
-      );
-      connection
+        );
+      await connection
         .prepare(
           "UPDATE users SET email_verified=1,terms_accepted_at=created_at,terms_version='2026-11-24',transaction_emails=0,product_emails=0 WHERE id=?",
         )
         .run(user);
-      connection.exec('COMMIT');
+
       return { created: true, passwordMatches: true };
-    } catch (error) {
-      connection.exec('ROLLBACK');
-      throw error;
     }
-  }
-  const existing = connection.prepare('SELECT password_hash FROM users WHERE email=?').get(email);
-  return {
-    created: false,
-    passwordMatches:
-      !!existing?.['password_hash'] &&
-      bcrypt.compareSync(password, String(existing['password_hash'])),
-  };
+    const existing = await connection
+      .prepare('SELECT password_hash FROM users WHERE email=?')
+      .get(email);
+    return {
+      created: false,
+      passwordMatches:
+        !!existing?.['password_hash'] &&
+        bcrypt.compareSync(password, String(existing['password_hash'])),
+    };
+  });
 }

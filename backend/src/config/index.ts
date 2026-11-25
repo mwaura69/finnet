@@ -12,6 +12,8 @@ export const config = {
   },
   secret: jwtSecret,
   database: env.DATABASE_PATH,
+  databaseUrl: env.NODE_ENV === 'test' ? undefined : env.DATABASE_URL || undefined,
+  databaseCaFile: env.DATABASE_CA_FILE,
   origin: env.FRONTEND_ORIGIN,
   google: { clientId: env.GOOGLE_CLIENT_ID || null },
   mfa: {

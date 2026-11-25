@@ -1,4 +1,4 @@
-import type { DatabaseSync } from 'node:sqlite';
+import type { Database } from '../db/connection.js';
 import { ApiError } from '../utils/ApiError.js';
 export type Role = 'admin' | 'analyst' | 'viewer';
 export type EntityAction = 'read' | 'write' | 'manage';
@@ -11,16 +11,16 @@ export interface PortfolioRecord {
   created_at: string;
 }
 export class PortfolioAccess {
-  constructor(private db: DatabaseSync) {}
-  role(userId: string): Role {
-    const user = this.db.prepare('SELECT role FROM users WHERE id=?').get(userId);
+  constructor(private db: Database) {}
+  async role(userId: string): Promise<Role> {
+    const user = await this.db.prepare('SELECT role FROM users WHERE id=?').get(userId);
     if (!user) throw new ApiError(401, 'UNAUTHENTICATED', 'Please sign in again to continue.');
     return String(user['role']) as Role;
   }
-  permissions(userId: string, portfolio: PortfolioRecord) {
-    const role = this.role(userId);
+  async permissions(userId: string, portfolio: PortfolioRecord) {
+    const role = await this.role(userId);
     const ownerOrAdmin = role === 'admin' || portfolio.user_id === userId;
-    const grant = this.db
+    const grant = await this.db
       .prepare('SELECT permission FROM portfolio_members WHERE portfolio_id=? AND user_id=?')
       .get(portfolio.id, userId);
     const canRead = ownerOrAdmin || !!grant;
@@ -34,12 +34,13 @@ export class PortfolioAccess {
       canManageMembers: canManage,
     };
   }
-  require(userId: string, id: string, action: EntityAction = 'read') {
-    const portfolio = this.db.prepare('SELECT * FROM portfolios WHERE id=?').get(id) as unknown as
-      PortfolioRecord | undefined;
+  async require(userId: string, id: string, action: EntityAction = 'read') {
+    const portfolio = (await this.db
+      .prepare('SELECT * FROM portfolios WHERE id=?')
+      .get(id)) as unknown as PortfolioRecord | undefined;
     if (!portfolio)
       throw new ApiError(404, 'PORTFOLIO_NOT_FOUND', 'This portfolio could not be found.');
-    const permissions = this.permissions(userId, portfolio);
+    const permissions = await this.permissions(userId, portfolio);
     if (!permissions.canRead)
       throw new ApiError(404, 'PORTFOLIO_NOT_FOUND', 'This portfolio could not be found.');
     if (
@@ -49,20 +50,12 @@ export class PortfolioAccess {
       throw new ApiError(403, 'FORBIDDEN', 'You do not have permission to change this portfolio.');
     return portfolio;
   }
-  requireCreate(userId: string) {
-    if (this.role(userId) === 'viewer')
+  async requireCreate(userId: string) {
+    if ((await this.role(userId)) === 'viewer')
       throw new ApiError(403, 'FORBIDDEN', 'Viewer accounts cannot create portfolios.');
   }
 }
-/** Synchronous rules and writes share the same SQLite write lock. */
-export function atomic<T>(db: DatabaseSync, work: () => T): T {
-  db.exec('BEGIN IMMEDIATE');
-  try {
-    const value = work();
-    db.exec('COMMIT');
-    return value;
-  } catch (error) {
-    db.exec('ROLLBACK');
-    throw error;
-  }
+/** Work and its reads/writes share one transaction and one leased database connection. */
+export async function atomic<T>(db: Database, work: () => T | Promise<T>): Promise<T> {
+  return db.transaction(work);
 }

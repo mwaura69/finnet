@@ -6,7 +6,8 @@
     "start": "ng serve --host 127.0.0.1 --proxy-config proxy.conf.json --poll 1500",
     "prebuild": "node scripts/set-env.mjs",
     "build": "ng build --configuration production",
-    "test": "ngc -p tsconfig.app.json && tsx --test tests/*.test.ts"
+    "test": "ngc -p tsconfig.app.json && tsx --test tests/*.test.ts",
+    "lint": "eslint src tests --ext .ts"
   },
   "dependencies": {
     "@angular/common": "~21.2.0",

@@ -9,7 +9,7 @@ const { createApp } = await import('../../src/app.js');
 const { config } = await import('../../src/config/index.js');
 const options = { email: 'demo@fintrack.local', password: 'FinTrackDemo!2026' };
 test('fresh demo seed logs in through cookie authentication and has valid sample portfolios', async () => {
-  assert.deepEqual(seedDemo(db, options), { created: true, passwordMatches: true });
+  assert.deepEqual(await seedDemo(db, options), { created: true, passwordMatches: true });
   config.demo = false; // Exercise real authenticated API behavior, not development demo mode.
   const app = createApp();
   const agent = request.agent(app);
@@ -33,25 +33,25 @@ test('fresh demo seed logs in through cookie authentication and has valid sample
     assert.ok(trades.some((t: { type: string }) => t.type === 'BUY'));
     assert.ok(trades.some((t: { type: string }) => t.type === 'SELL'));
   }
-  const before = db.prepare('SELECT COUNT(*) AS n FROM transactions').get()!.n;
-  assert.deepEqual(seedDemo(db, options), { created: false, passwordMatches: true });
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM transactions').get()!.n, before);
+  const before = (await db.prepare('SELECT COUNT(*) AS n FROM transactions').get())!.n;
+  assert.deepEqual(await seedDemo(db, options), { created: false, passwordMatches: true });
+  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM transactions').get())!.n, before);
 });
-test('seeding never resets existing passwords, verification or preferences and different seed accounts do not collide', () => {
+test('seeding never resets existing passwords, verification or preferences and different seed accounts do not collide', async () => {
   const hash = bcrypt.hashSync('Existing123!', 4);
-  db.prepare(
-    'UPDATE users SET password_hash=?,email_verified=0,email_mfa_enabled=1 WHERE email=?',
-  ).run(hash, options.email);
-  assert.deepEqual(seedDemo(db, options), { created: false, passwordMatches: false });
-  const preserved = db
+  await db
+    .prepare('UPDATE users SET password_hash=?,email_verified=0,email_mfa_enabled=1 WHERE email=?')
+    .run(hash, options.email);
+  assert.deepEqual(await seedDemo(db, options), { created: false, passwordMatches: false });
+  const preserved = (await db
     .prepare('SELECT password_hash,email_verified,email_mfa_enabled FROM users WHERE email=?')
-    .get(options.email)!;
+    .get(options.email))!;
   assert.equal(preserved.password_hash, hash);
   assert.equal(preserved.email_verified, 0);
   assert.equal(preserved.email_mfa_enabled, 1);
   assert.equal(
-    seedDemo(db, { email: 'second-demo@example.test', password: 'Another123!' }).created,
+    (await seedDemo(db, { email: 'second-demo@example.test', password: 'Another123!' })).created,
     true,
   );
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM portfolios').get()!.n, 6);
+  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM portfolios').get())!.n, 6);
 });

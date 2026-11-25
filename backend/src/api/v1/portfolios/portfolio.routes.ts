@@ -14,14 +14,12 @@ portfolioRouter.use(
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     handler: (_req, res) =>
-      res
-        .status(429)
-        .json({
-          error: {
-            code: 'RATE_LIMITED',
-            message: 'Too many portfolio requests. Please wait a minute.',
-          },
-        }),
+      res.status(429).json({
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Too many portfolio requests. Please wait a minute.',
+        },
+      }),
   }),
 );
 portfolioRouter.route('/').get(controller.list).post(validate(portfolioSchema), controller.create);

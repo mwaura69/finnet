@@ -21,11 +21,9 @@ import type { GoogleInput, GoogleProfile, LoginInput, RegisterInput } from './au
 import type { UserModel } from '../../../db/models/user.model.js';
 import { verifyToken } from '../../../utils/jwt.js';
 import { renderEmail, emailContent } from '../../../utils/email.template.js';
-
 const genericMessage =
   'If an eligible account exists, a secure link has been sent to its email address.';
 const googleClient = new OAuth2Client();
-
 export async function verifyGoogleCredential(credential: string): Promise<GoogleProfile> {
   if (!config.google.clientId)
     throw new ApiError(
@@ -53,7 +51,6 @@ export async function verifyGoogleCredential(credential: string): Promise<Google
     );
   }
 }
-
 export class AuthService {
   constructor(
     private repository = new AuthRepository(),
@@ -68,31 +65,32 @@ export class AuthService {
       );
     if (user.email_mfa_enabled)
       return { kind: 'mfa' as const, data: await mfaService.create(user, 'login', stay) };
-    return newSession(user.id, stay);
+    return await newSession(user.id, stay);
   }
-
-  private issueToken(userId: string, purpose: 'verify' | 'reset' | 'set') {
+  private async issueToken(userId: string, purpose: 'verify' | 'reset' | 'set') {
     const token = randomBytes(32).toString('base64url'),
       now = Date.now();
-    db.prepare(
-      'UPDATE auth_tokens SET consumed_at=? WHERE user_id=? AND purpose=? AND consumed_at IS NULL',
-    ).run(now, userId, purpose);
-    db.prepare(
-      'INSERT INTO auth_tokens(id,user_id,purpose,token_hash,expires_at,created_at) VALUES(?,?,?,?,?,?)',
-    ).run(
-      randomBytes(16).toString('hex'),
-      userId,
-      purpose,
-      hashToken(token),
-      now + (purpose === 'verify' ? 86400000 : 1800000),
-      now,
-    );
+    await db
+      .prepare(
+        'UPDATE auth_tokens SET consumed_at=? WHERE user_id=? AND purpose=? AND consumed_at IS NULL',
+      )
+      .run(now, userId, purpose);
+    await db
+      .prepare(
+        'INSERT INTO auth_tokens(id,user_id,purpose,token_hash,expires_at,created_at) VALUES(?,?,?,?,?,?)',
+      )
+      .run(
+        randomBytes(16).toString('hex'),
+        userId,
+        purpose,
+        hashToken(token),
+        now + (purpose === 'verify' ? 86400000 : 1800000),
+        now,
+      );
     return token;
   }
-
   private async emailLink(user: UserModel, purpose: 'verify' | 'reset' | 'set') {
-    const token = atomic(() => this.issueToken(user.id, purpose));
-
+    const token = await atomic(async () => await this.issueToken(user.id, purpose));
     const route =
       purpose === 'verify'
         ? 'verify-email'
@@ -114,21 +112,19 @@ export class AuthService {
       html: renderEmail(emailContent[purpose](link.toString())),
     });
   }
-
   async register(input: RegisterInput) {
-    if (this.repository.findByEmail(input.email))
+    if (await this.repository.findByEmail(input.email))
       throw new ApiError(409, 'EMAIL_IN_USE', 'An account with this email already exists.');
     const passwordHash = await hashPassword(input.password);
     let user: UserModel;
     try {
-      user = atomic(() => this.repository.create({ ...input, passwordHash }));
+      user = await atomic(async () => await this.repository.create({ ...input, passwordHash }));
     } catch (error) {
-      if (this.repository.findByEmail(input.email))
+      if (await this.repository.findByEmail(input.email))
         throw new ApiError(409, 'EMAIL_IN_USE', 'An account with this email already exists.');
       throw error;
     }
     await this.emailLink(user, 'verify');
-
     return {
       message:
         'A confirmation link has been sent to your email. Open it to confirm your account before signing in.',
@@ -136,20 +132,18 @@ export class AuthService {
       email: user.email,
     };
   }
-
   async login(input: LoginInput) {
-    const user = this.repository.findByEmail(input.email);
+    const user = await this.repository.findByEmail(input.email);
     const valid = await verifyPassword(input.password, user?.password_hash || dummyHash);
     if (!user || !valid || !user.password_hash)
       throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
-    return this.authenticated(user, input.stayLoggedIn);
+    return await this.authenticated(user, input.stayLoggedIn);
   }
-
   async google(input: GoogleInput) {
     const profile = await this.googleVerifier(input.credential);
-    let user = this.repository.findByGoogleId(profile.googleId);
+    let user = await this.repository.findByGoogleId(profile.googleId);
     if (!user) {
-      const existing = this.repository.findByEmail(profile.email);
+      const existing = await this.repository.findByEmail(profile.email);
       if (existing)
         throw new ApiError(
           409,
@@ -162,61 +156,65 @@ export class AuthService {
           'TERMS_REQUIRED',
           'Accept the terms and conditions to create an account.',
         );
-      user = atomic(() =>
-        this.repository.createWithGoogle({
-          name: profile.name,
-          email: profile.email,
-          googleId: profile.googleId,
-        }),
+      user = await atomic(
+        async () =>
+          await this.repository.createWithGoogle({
+            name: profile.name,
+            email: profile.email,
+            googleId: profile.googleId,
+          }),
       );
     }
-    return this.authenticated(user, input.stayLoggedIn);
+    return await this.authenticated(user, input.stayLoggedIn);
   }
-  async verifyMfa(input: { challengeId: string; code: string }, accessToken?: string) {
+  async verifyMfa(
+    input: {
+      challengeId: string;
+      code: string;
+    },
+    accessToken?: string,
+  ) {
     let sid: string | undefined;
     try {
       if (accessToken) {
         const claims = verifyToken(accessToken);
-        activeSession(claims.sessionId);
+        await activeSession(claims.sessionId);
         sid = claims.sessionId;
       }
     } catch {
       /* No signed-in session is needed for login MFA. */
     }
-    const challenge = mfaService.consume(input.challengeId, input.code, sid);
-    if (challenge.purpose === 'enable' && sid) revokeSession(sid);
-    return newSession(challenge.user_id, !!challenge.stay_logged_in, Date.now());
+    const challenge = await mfaService.consume(input.challengeId, input.code, sid);
+    if (challenge.purpose === 'enable' && sid) await revokeSession(sid);
+    return await newSession(challenge.user_id, !!challenge.stay_logged_in, Date.now());
   }
-
-  resendMfa(input: { challengeId: string }) {
-    return mfaService.resend(input.challengeId);
+  async resendMfa(input: { challengeId: string }) {
+    return await mfaService.resend(input.challengeId);
   }
-  refresh(token?: string) {
+  async refresh(token?: string) {
     if (!token) throw new ApiError(401, 'UNAUTHENTICATED', 'Please sign in again.');
-    return refreshSession(token);
+    return await refreshSession(token);
   }
-  logout(sessionId?: string, refreshToken?: string) {
-    if (sessionId) revokeSession(sessionId);
+  async logout(sessionId?: string, refreshToken?: string) {
+    if (sessionId) await revokeSession(sessionId);
     if (refreshToken) {
-      const row = db
+      const row = await db
         .prepare('SELECT session_id FROM refresh_tokens WHERE token_hash=?')
         .get(hashToken(refreshToken));
-      if (row) revokeSession(String(row['session_id']));
+      if (row) await revokeSession(String(row['session_id']));
     }
     return { message: 'You have been signed out.' };
   }
-  me(sessionId: string) {
-    return sessionData(sessionId);
+  async me(sessionId: string) {
+    return await sessionData(sessionId);
   }
-
   async forgotPassword(email: string) {
-    const user = this.repository.findByEmail(email);
+    const user = await this.repository.findByEmail(email);
     if (user?.email_verified) await this.emailLink(user, user.password_hash ? 'reset' : 'set');
     return { message: genericMessage };
   }
-
   async resendVerification(email: string, requestId?: string) {
-    const user = this.repository.findByEmail(email);
+    const user = await this.repository.findByEmail(email);
     const context = { requestId, event: 'verification_resend', delivery: config.mail.delivery };
     if (!user || user.email_verified) {
       logger.info({ ...context, outcome: 'not_eligible' }, 'Verification email skipped');
@@ -231,10 +229,9 @@ export class AuthService {
     }
     return { message: genericMessage };
   }
-
-  verifyEmail(token: string) {
-    atomic(() => {
-      const record = db
+  async verifyEmail(token: string) {
+    await atomic(async () => {
+      const record = await db
         .prepare("SELECT * FROM auth_tokens WHERE token_hash=? AND purpose='verify'")
         .get(hashToken(token));
       if (!record || record['consumed_at'] !== null || Number(record['expires_at']) <= Date.now())
@@ -243,20 +240,26 @@ export class AuthService {
           'INVALID_LINK',
           'This confirmation link is invalid, expired or already used. Request another link.',
         );
-      db.prepare('UPDATE auth_tokens SET consumed_at=? WHERE id=?').run(
-        Date.now(),
-        String(record['id']),
-      );
-      db.prepare('UPDATE users SET email_verified=1 WHERE id=?').run(String(record['user_id']));
+      await db
+        .prepare('UPDATE auth_tokens SET consumed_at=? WHERE id=?')
+        .run(Date.now(), String(record['id']));
+      await db
+        .prepare('UPDATE users SET email_verified=1 WHERE id=?')
+        .run(String(record['user_id']));
     });
     return { message: 'Email confirmed. You can now sign in.' };
   }
-
-  async resetPassword(input: { token: string; password: string }, purpose: 'reset' | 'set') {
+  async resetPassword(
+    input: {
+      token: string;
+      password: string;
+    },
+    purpose: 'reset' | 'set',
+  ) {
     const passwordHash = await hashPassword(input.password);
     let email = '';
-    atomic(() => {
-      const record = db
+    await atomic(async () => {
+      const record = await db
         .prepare('SELECT * FROM auth_tokens WHERE token_hash=? AND purpose=?')
         .get(hashToken(input.token), purpose);
       if (!record || record['consumed_at'] !== null || Number(record['expires_at']) <= Date.now())
@@ -266,16 +269,16 @@ export class AuthService {
           'This password link is invalid, expired or already used. Request another link.',
         );
       const userId = String(record['user_id']);
-      const user = this.repository.findById(userId)!;
+      const user = (await this.repository.findById(userId))!;
       email = user.email;
-      db.prepare(
-        'UPDATE auth_tokens SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL',
-      ).run(Date.now(), userId);
-      db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(passwordHash, userId);
-      revokeAll(userId);
-      db.prepare(
-        'UPDATE mfa_challenges SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL',
-      ).run(Date.now(), userId);
+      await db
+        .prepare('UPDATE auth_tokens SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL')
+        .run(Date.now(), userId);
+      await db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(passwordHash, userId);
+      await revokeAll(userId);
+      await db
+        .prepare('UPDATE mfa_challenges SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL')
+        .run(Date.now(), userId);
     });
     await sendEmail({
       to: email,
@@ -284,24 +287,28 @@ export class AuthService {
     });
     return { message: 'Password saved. Sign in with your new password.' };
   }
-
   async requestSetPassword(userId: string) {
-    const user = this.repository.findById(userId)!;
+    const user = (await this.repository.findById(userId))!;
     await this.emailLink(user, 'set');
     return { message: 'A secure set-password link has been sent to your email address.' };
   }
-
-  async changePassword(userId: string, input: { currentPassword: string; password: string }) {
-    const user = this.repository.findById(userId)!;
+  async changePassword(
+    userId: string,
+    input: {
+      currentPassword: string;
+      password: string;
+    },
+  ) {
+    const user = (await this.repository.findById(userId))!;
     if (!user.password_hash || !(await verifyPassword(input.currentPassword, user.password_hash)))
       throw new ApiError(401, 'INVALID_CREDENTIALS', 'Your current password is incorrect.');
     const hash = await hashPassword(input.password);
-    atomic(() => {
-      db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hash, userId);
-      revokeAll(userId);
-      db.prepare(
-        'UPDATE auth_tokens SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL',
-      ).run(Date.now(), userId);
+    await atomic(async () => {
+      await db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hash, userId);
+      await revokeAll(userId);
+      await db
+        .prepare('UPDATE auth_tokens SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL')
+        .run(Date.now(), userId);
     });
     await sendEmail({
       to: user.email,

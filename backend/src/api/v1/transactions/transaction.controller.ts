@@ -10,12 +10,12 @@ export const create = asyncHandler(async (req, res) => {
     String(req.params['id']),
     req.body,
   );
-  flushTransactionNotifications();
+  await flushTransactionNotifications();
   res.status(201).json({ data: transaction });
 });
 export const remove = asyncHandler(async (req, res) => {
   await business.transactions.remove(req.userId, String(req.params['id']));
-  flushTransactionNotifications();
+  await flushTransactionNotifications();
   res.sendStatus(204);
 });
 export const receipt = asyncHandler(async (req, res) =>

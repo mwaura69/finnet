@@ -13,7 +13,7 @@ import { ApiError } from '../../../utils/ApiError.js';
 export const userRouter = Router();
 userRouter.use(requireAuth);
 const service = new UserService();
-userRouter.get('/me', (req, res) => res.json({ data: service.me(req.userId) }));
+userRouter.get('/me', async (req, res) => res.json({ data: await service.me(req.userId) }));
 const avatar = z
   .string()
   .max(1400000)
@@ -43,19 +43,21 @@ userRouter.patch(
       })
       .strict(),
   ),
-  (req, res) => {
+  async (req, res) => {
     for (const [key, column] of [
       ['name', 'name'],
       ['avatarUrl', 'avatar_url'],
       ['onboardingCompleted', 'onboarding_completed'],
     ]) {
       if (req.body[key] !== undefined)
-        db.prepare(`UPDATE users SET ${column}=? WHERE id=?`).run(
-          typeof req.body[key] === 'boolean' ? Number(req.body[key]) : req.body[key],
-          req.userId,
-        );
+        await db
+          .prepare(`UPDATE users SET ${column}=? WHERE id=?`)
+          .run(
+            typeof req.body[key] === 'boolean' ? Number(req.body[key]) : req.body[key],
+            req.userId,
+          );
     }
-    res.json({ data: service.me(req.userId) });
+    res.json({ data: await service.me(req.userId) });
   },
 );
 userRouter.patch(
@@ -71,13 +73,13 @@ userRouter.patch(
       .strict(),
   ),
   asyncHandler(async (req, res) => {
-    const user = new UserRepository().findById(req.userId)!;
+    const user = (await new UserRepository().findById(req.userId))!;
     if (req.body.emailMfaEnabled === true && !user.email_mfa_enabled) {
       res.json({ data: await mfaService.create(user, 'enable', false, req.sessionId) });
       return;
     }
     if (req.body.emailMfaEnabled === false && user.email_mfa_enabled) {
-      const session = activeSession(req.sessionId);
+      const session = await activeSession(req.sessionId);
       if (
         !(session.mfa_verified_at && session.mfa_verified_at > Date.now() - 600000) &&
         !(
@@ -98,10 +100,9 @@ userRouter.patch(
       ['emailMfaEnabled', 'email_mfa_enabled'],
     ])
       if (req.body[key] !== undefined)
-        db.prepare(`UPDATE users SET ${column}=? WHERE id=?`).run(
-          Number(req.body[key]),
-          req.userId,
-        );
-    res.json({ data: service.me(req.userId) });
+        await db
+          .prepare(`UPDATE users SET ${column}=? WHERE id=?`)
+          .run(Number(req.body[key]), req.userId);
+    res.json({ data: await service.me(req.userId) });
   }),
 );
