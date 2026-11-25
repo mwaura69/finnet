@@ -1,46 +1,30 @@
 # FinTrack Angular frontend
 
-The finished interface consumes HTTP/JSON only. It has no embedded portfolio or transaction fixture arrays. Use the backend's development demo adapter to preview it while implementing the production business service.
+Angular 21 / TypeScript SPA consuming only the FinTrack HTTP/JSON API. There are no hard-coded portfolio or transaction fixture arrays. Finnet reference branding is implemented with shared CSS tokens and vector assets.
 
-From the repository root:
+From the repository root, run `npm ci`, `npm run setup`, then `npm run dev`. Open http://localhost:4200. The demo button uses the documented fictional seeded account.
 
-```sh
-npm ci
-npm run setup
-npm run dev:demo
-```
+| Route | Screen |
+| --- | --- |
+| `/login`, `/register` | Validated authentication and Google account entry |
+| `/verify-email`, `/resend-verification` | Email confirmation and recovery |
+| `/forgot-password`, `/reset-password`, `/set-password`, `/mfa` | Account recovery and email MFA |
+| `/` | Currency-specific portfolio overview |
+| `/portfolios` | Searchable portfolio CRUD |
+| `/portfolios/:id` | Transactions, filters/sort/pagination, holdings/allocation, CSV/Excel |
+| `/profile`, `/settings`, `/terms` | Account profile, preferences, security and terms |
+| `/transactions/:id/receipt` | Printable transaction record |
 
-Open `http://localhost:4200`. Sign in using the demo button, or `demo@fintrack.local` / `FinTrackDemo!2026`.
+Access and refresh tokens stay in HttpOnly cookies; the frontend does not store JWTs in sessionStorage/localStorage. A signed CSRF header protects mutations. Route guards restore the server session, refresh once for concurrent expired requests, and return unauthenticated users to sign-in.
 
-## Routes
-
-| Route             | Interface                                                                        |
-| ----------------- | -------------------------------------------------------------------------------- |
-| `/login`          | Validated sign-in, password visibility and demo entry                            |
-| `/register`       | Validated analyst registration                                                   |
-| `/`               | Currency-specific overview, metrics, portfolio table, allocation and activity    |
-| `/portfolios`     | Searchable portfolio cards, create/edit/delete                                   |
-| `/portfolios/:id` | Holdings, allocation, transactions, filters/sorting, recording, deletion and CSV |
-
-The route guard restores identity from `/api/v1/auth/me`. JWTs remain in per-tab session storage; unauthorized API calls return to sign-in. All API methods and errors are centralized in `src/app/core/api.ts`, with the contract in `models.ts`.
-
-## Connect your API
-
-The default `public/config.json` is `{ "apiBaseUrl": "/api/v1" }`. Development requests are proxied to port 3000 using `proxy.conf.json`. The backend also supports the assessment's `/api` alias.
-
-For a separate deployed API, set `apiBaseUrl` to its HTTPS origin followed by `/api/v1`, configure exact-origin backend CORS and update the frontend host's `connect-src` CSP. This is runtime configuration; no Angular source edit is needed. Never ship a production configuration pointing at localhost.
-
-Keep the documented response shapes: `{data: ...}` for success and `{error: {code,message,details?,requestId?}}` for errors; delete returns 204. The production service can be synchronous or asynchronous because controllers await its methods.
-
-## Design and states
-
-`src/styles.css` defines Finnet navy, green, greys, semantic return colours, one sans-serif family, spacing and border tokens. Positive/negative return colours accompany explicit +/− signs. All amounts identify the portfolio currency and use two decimal places. The allocation chart has a text equivalent and a legend. Trade values are explicitly indicative, based on the latest recorded trade, rather than live market prices.
-
-The UI includes loading, empty, error and mutation feedback; confirmations for destructive actions; labels and visible keyboard focus; modal focus behavior; mobile navigation; and contained table scrolling at 375px. Shared dialogs and the allocation component live under `src/app/shared/`.
+`npm run build -w Frontend` generates `environment.prod.ts` and `public/config.json` from public `API_URL`/optional `GOOGLE_CLIENT_ID`; default API URL is `/api/v1`. Netlify configuration proxies `/api/*` to Render before the SPA fallback. Local dev proxies to port 3000. Keep provider secrets and database URLs out of frontend environment variables.
 
 ```sh
+npm run lint -w Frontend
 npm run build -w Frontend
 npm run test -w Frontend
 ```
 
-The test script compiles Angular first, then runs a real allocation component test and financial formatting/CSV checks. Production output is `Frontend/dist/fintrack/browser`. Configure SPA fallback on the host so deep links survive refreshes. See the root README and `docs/VERIFICATION.md` for screenshots and verification limits.
+Output: `Frontend/dist/fintrack/browser`. `ngc` compiles strict templates before tests. Component tests cover accessible allocation, transaction form/server errors, Google terms and MFA navigation; helpers cover passwords, refresh single-flight, currencies and CSV injection escaping.
+
+Loading/empty/error states, labelled controls, native modal focus trapping, equal-height BUY/SELL cards with whole-card keyboard focus, mobile navigation and 375px table containment are included. The PWA caches only public shell assets. [Verification and browser limits](../docs/VERIFICATION.md).

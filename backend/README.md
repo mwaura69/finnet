@@ -1,90 +1,37 @@
-# FinTrack API scaffold
+# FinTrack backend
 
-The feature-based backend follows the requested folder convention. `portfolios` and `transactions` replace the generic example's `posts`; no unrelated post model is introduced.
+Express 5 / TypeScript REST API using Supabase PostgreSQL in deployment and SQLite for local setup. Both drivers expose asynchronous parameterized queries and transactions. There are no placeholder 501 business services.
 
-```text
-backend/
-├── src/
-│   ├── config/
-│   │   ├── index.ts
-│   │   ├── env.ts
-│   │   └── logger.ts
-│   ├── db/
-│   │   ├── index.ts
-│   │   ├── migrations/001_initial.sql
-│   │   ├── seeds/index.ts
-│   │   └── models/{user,portfolio,transaction}.model.ts
-│   ├── api/
-│   │   ├── index.ts
-│   │   └── v1/
-│   │       ├── index.ts
-│   │       ├── services.ts
-│   │       ├── auth/auth.{routes,controller,service,repository,schema,types}.ts
-│   │       ├── users/user.{routes,controller,service,repository,schema,types}.ts
-│   │       ├── portfolios/portfolio.{routes,controller,service,repository,schema,types}.ts
-│   │       └── transactions/transaction.{routes,controller,service,repository,schema,types}.ts
-│   ├── middleware/
-│   │   ├── auth.middleware.ts
-│   │   ├── error.middleware.ts
-│   │   ├── validate.middleware.ts
-│   │   ├── rateLimit.middleware.ts
-│   │   ├── notFound.middleware.ts
-│   │   └── requestLogger.middleware.ts
-│   ├── utils/{ApiError,asyncHandler,jwt,hash}.ts
-│   ├── types/{express.d.ts,index.ts}
-│   ├── domain/holdings.ts
-│   ├── demo/demo.service.ts
-│   ├── app.ts
-│   └── server.ts
-├── tests/
-│   ├── unit/holdings.test.ts
-│   ├── integration/api.test.ts
-│   └── setup.ts
-├── scripts/copy-assets.mjs
-├── data/.gitkeep
-├── .env                   # local, ignored; random secret generated during setup
-├── .env.example
-├── .eslintrc.json
-├── .prettierrc
-├── .gitignore
-├── nodemon.json
-├── package.json
-├── tsconfig.json
-├── openapi.json
-├── Dockerfile
-└── README.md
-```
-
-## Responsibilities
-
-- **Routes** map HTTP methods and apply authentication/validation middleware.
-- **Controllers** map validated input into a service call and format success responses. Async wrappers forward errors.
-- **Services** enforce business rules. Auth and user services work; portfolio and transaction services are your implementation points and currently return 501.
-- **Repositories** hold parameterized SQL. User/auth queries work, and portfolio/transaction query helpers are ready for the service implementation.
-- **Schemas** validate requests with Zod. **Types** describe DTOs; **models** describe stored SQLite rows.
-- **Middleware** verifies JWTs, formats errors, validates input, rate-limits auth attempts, handles missing routes and logs request metadata.
-- **Config** validates environment values and exposes configuration/Pino logging. Requests do not log bodies or authorization headers.
-- **Demo** is an isolated reference adapter used only with `DEMO_MODE=true`; production configuration rejects it.
-
-## Run from the repository root
+From the repository root:
 
 ```sh
 npm ci
 cp backend/.env.example backend/.env
 npm run setup
-npm run dev:demo
+npm run dev -w backend
 ```
 
-The root README covers demo credentials and the frontend. For backend only, `npm run dev -w backend` starts the scaffold on port 3000. `npm run dev:demo -w backend` uses the reference adapter. Nodemon uses polling for compatibility with restricted macOS file watcher limits.
+The `.env` copy is only needed once. Node 24 is required. `npm run build -w backend` emits `backend/dist`; `npm run start -w backend` starts that build. Use `npm run db:setup:prod -w backend` to seed a compiled checkout, or `SEED_DEMO_ON_START=true` to initialize a missing demo on the running database before listening.
+
+`DATABASE_URL` selects PostgreSQL. Without it, `DATABASE_PATH` selects local SQLite. Ordered migrations are in `src/db/migrations` (SQLite) and `src/db/migrations/postgres` (PostgreSQL). PostgreSQL application tables are isolated in the `fintrack` schema. The schema enables RLS on application tables with no public Data API policies; connect the backend using the database owner/pooler credentials, never a browser publishable key. Existing SQLite files are preserved; an explicit import script is available.
+
+- `src/config`: validated environment, constants, Pino logger.
+- `src/db`: driver boundary, migrations, seed and offline import.
+- `src/api/v1/{auth,users,portfolios,transactions}`: routes, controllers, validation, services, repositories and DTOs.
+- `src/domain`: ownership/entity authorization, ledger calculations and durable notifications.
+- `src/security`: cookie/CSRF handling and server-side sessions.
+- `src/middleware`: auth, validation, bounded rate limiting, consistent errors and request IDs.
+- `src/utils`: password/JWT helpers and branded SMTP/Resend/outbox email.
+
+API docs: `/api/v1/docs/`; machine-readable schema: `/api/v1/openapi.json`. Compatibility prefix `/api` serves the same endpoints. Public health: `/health`; it checks database access and reports `sqlite` or `postgres` without exposing credentials.
 
 ```sh
-npm run build -w backend
 npm run lint -w backend
+npm run build -w backend
 npm run test -w backend
+npm run test:postgres -w backend
 ```
 
-Canonical docs: `http://localhost:3000/api/v1/docs/`. The Swagger document includes both `/api/v1` and `/api` servers. `GET /api/v1/users/me` and `GET /api/v1/auth/me` expose the authenticated profile. Health is public at `/health`.
+Tests use isolated databases and mocked email delivery; they do not use the deployed database or send real messages. The PostgreSQL-compatible suite uses PGlite; a separate mocked node-postgres driver test verifies transaction connection ownership, rollback and serialization retries.
 
-The database is real SQLite and lives in `data/fintrack.sqlite` by default. Migrations and seeds are under `src/db` as requested. The build copies SQL migrations into `dist/db/migrations` for production. The initial migration is idempotent; add a version-aware migration runner for future versions.
-
-Read [implementation guide](../docs/BACKEND_IMPLEMENTATION.md), [deployment guide](../docs/DEPLOYMENT.md), and [root README](../README.md) before connecting production services. No live deployment or remote repository is claimed.
+See [root overview](../README.md), [deployment](../docs/DEPLOYMENT.md), [business rules](../docs/BACKEND_IMPLEMENTATION.md), [security](../docs/SECURITY_AND_ACCOUNT_FLOWS.md) and [Postman](postman/README.md).

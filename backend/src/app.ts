@@ -2,6 +2,7 @@ import express from 'express';
 import { requireCsrf } from './security/cookies.js';
 import cors from 'cors';
 import helmet from 'helmet';
+import { db } from './db/index.js';
 import { config } from './config/index.js';
 import { apiRouter } from './api/index.js';
 import { requestLogger } from './middleware/requestLogger.middleware.js';
@@ -23,9 +24,14 @@ export function createApp() {
     }),
   );
   app.use(express.json({ limit: '2mb' }));
-  app.get('/health', (_req, res) =>
-    res.json({ status: 'ok', mode: config.demo ? 'demo' : 'scaffold' }),
-  );
+  app.get('/health', async (_req, res) => {
+    try {
+      await db.prepare('SELECT 1 AS ready').get();
+      res.json({ status: 'ok', mode: config.demo ? 'demo' : 'api', database: db.kind });
+    } catch {
+      res.status(503).json({ status: 'error', database: db.kind });
+    }
+  });
   app.use(
     '/api',
     (_req, res, next) => {

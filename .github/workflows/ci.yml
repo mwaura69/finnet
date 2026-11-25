@@ -1,7 +1,7 @@
-name: FinTrack checks
+name: Quality checks
 on:
   push:
-    branches: [main, 'feat/**']
+    branches: [main, updating-mail-delivery-system, 'feat/**']
   pull_request:
 permissions:
   contents: read
@@ -12,7 +12,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: '24'
           cache: npm
       - run: npm ci
-      - run: npm run check
+      - run: npm run check:secrets
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+      - run: npm run test:postgres -w backend
+      - run: docker compose config --quiet

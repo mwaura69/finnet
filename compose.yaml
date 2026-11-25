@@ -1,4 +1,4 @@
-# Local demo only. No business service is wired for production yet.
+# Local stack using the real SQLite-backed API and fictional demo data.
 services:
   seed:
     build:
@@ -15,7 +15,8 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       NODE_ENV: development
-      DEMO_MODE: 'true'
+      DEMO_MODE: 'false'
+      TRUST_PROXY_HOPS: 1
       PORT: 3000
       DATABASE_PATH: /app/backend/data/fintrack.sqlite
       FRONTEND_ORIGIN: http://localhost:8080

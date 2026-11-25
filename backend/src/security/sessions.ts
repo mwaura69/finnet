@@ -16,12 +16,12 @@ export interface SessionRow {
   mfa_verified_at: number | null;
 }
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
-export function findSession(id: string) {
-  return db.prepare('SELECT * FROM sessions WHERE id=?').get(id) as unknown as
+export async function findSession(id: string) {
+  return (await db.prepare('SELECT * FROM sessions WHERE id=?').get(id)) as unknown as
     SessionRow | undefined;
 }
-export function activeSession(id: string) {
-  const row = findSession(id);
+export async function activeSession(id: string) {
+  const row = await findSession(id);
   if (
     !row ||
     row.revoked_at ||
@@ -31,20 +31,18 @@ export function activeSession(id: string) {
     throw new ApiError(401, 'SESSION_EXPIRED', 'Your session expired. Please sign in again.');
   return row;
 }
-export function revokeSession(id: string) {
-  db.prepare('UPDATE sessions SET revoked_at=? WHERE id=? AND revoked_at IS NULL').run(
-    Date.now(),
-    id,
-  );
+export async function revokeSession(id: string) {
+  await db
+    .prepare('UPDATE sessions SET revoked_at=? WHERE id=? AND revoked_at IS NULL')
+    .run(Date.now(), id);
 }
-export function revokeAll(userId: string) {
-  db.prepare('UPDATE sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL').run(
-    Date.now(),
-    userId,
-  );
+export async function revokeAll(userId: string) {
+  await db
+    .prepare('UPDATE sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL')
+    .run(Date.now(), userId);
 }
-function grant(row: SessionRow, refresh: string) {
-  const user = new UserRepository().findById(row.user_id);
+async function grant(row: SessionRow, refresh: string) {
+  const user = await new UserRepository().findById(row.user_id);
   if (!user) throw new ApiError(401, 'UNAUTHENTICATED', 'Please sign in again.');
   return {
     kind: 'session' as const,
@@ -65,58 +63,68 @@ function grant(row: SessionRow, refresh: string) {
     },
   };
 }
-export function newSession(userId: string, stayLoggedIn: boolean, mfaAt: number | null = null) {
+export async function newSession(
+  userId: string,
+  stayLoggedIn: boolean,
+  mfaAt: number | null = null,
+) {
   const now = Date.now(),
     id = randomUUID(),
     refresh = randomBytes(48).toString('base64url');
   const expires =
     now + (stayLoggedIn ? config.session.persistentSeconds : config.session.normalSeconds) * 1000;
-  atomic(() => {
-    db.prepare(
-      'INSERT INTO sessions(id,user_id,created_at,last_seen_at,expires_at,stay_logged_in,mfa_verified_at) VALUES(?,?,?,?,?,?,?)',
-    ).run(id, userId, now, now, expires, stayLoggedIn ? 1 : 0, mfaAt);
-    db.prepare(
-      'INSERT INTO refresh_tokens(token_hash,session_id,expires_at,created_at) VALUES(?,?,?,?)',
-    ).run(hashToken(refresh), id, expires, now);
+  await atomic(async () => {
+    await db
+      .prepare(
+        'INSERT INTO sessions(id,user_id,created_at,last_seen_at,expires_at,stay_logged_in,mfa_verified_at) VALUES(?,?,?,?,?,?,?)',
+      )
+      .run(id, userId, now, now, expires, stayLoggedIn ? 1 : 0, mfaAt);
+    await db
+      .prepare(
+        'INSERT INTO refresh_tokens(token_hash,session_id,expires_at,created_at) VALUES(?,?,?,?)',
+      )
+      .run(hashToken(refresh), id, expires, now);
   });
-  return grant(findSession(id)!, refresh);
+  return await grant((await findSession(id))!, refresh);
 }
-export function refreshSession(token: string) {
+export async function refreshSession(token: string) {
   const hash = hashToken(token);
   let failure = false;
   let updated: SessionRow | undefined;
   const refresh = randomBytes(48).toString('base64url');
-  atomic(() => {
-    const record = db.prepare('SELECT * FROM refresh_tokens WHERE token_hash=?').get(hash);
+  await atomic(async () => {
+    const record = await db.prepare('SELECT * FROM refresh_tokens WHERE token_hash=?').get(hash);
     if (!record) {
       failure = true;
       return;
     }
     const id = String(record['session_id']);
-    const row = findSession(id);
+    const row = await findSession(id);
     if (record['consumed_at'] !== null) {
-      revokeSession(id);
+      await revokeSession(id);
       failure = true;
       return;
     }
     try {
-      updated = activeSession(id);
+      updated = await activeSession(id);
     } catch {
-      if (row) revokeSession(id);
+      if (row) await revokeSession(id);
       failure = true;
       return;
     }
     if (Number(record['expires_at']) <= Date.now()) {
-      revokeSession(id);
+      await revokeSession(id);
       failure = true;
       return;
     }
     const now = Date.now();
-    db.prepare('UPDATE refresh_tokens SET consumed_at=? WHERE token_hash=?').run(now, hash);
-    db.prepare(
-      'INSERT INTO refresh_tokens(token_hash,session_id,expires_at,created_at) VALUES(?,?,?,?)',
-    ).run(hashToken(refresh), id, updated.expires_at, now);
-    db.prepare('UPDATE sessions SET last_seen_at=? WHERE id=?').run(now, id);
+    await db.prepare('UPDATE refresh_tokens SET consumed_at=? WHERE token_hash=?').run(now, hash);
+    await db
+      .prepare(
+        'INSERT INTO refresh_tokens(token_hash,session_id,expires_at,created_at) VALUES(?,?,?,?)',
+      )
+      .run(hashToken(refresh), id, updated.expires_at, now);
+    await db.prepare('UPDATE sessions SET last_seen_at=? WHERE id=?').run(now, id);
   });
   if (failure || !updated)
     throw new ApiError(
@@ -124,9 +132,9 @@ export function refreshSession(token: string) {
       'SESSION_EXPIRED',
       'Session expired or refresh token was reused. Please sign in again.',
     );
-  return grant(updated, refresh);
+  return await grant(updated, refresh);
 }
-export function sessionData(id: string) {
-  const row = activeSession(id);
-  return grant(row, '').data;
+export async function sessionData(id: string) {
+  const row = await activeSession(id);
+  return (await grant(row, '')).data;
 }

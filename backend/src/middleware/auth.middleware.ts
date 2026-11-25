@@ -6,17 +6,17 @@ import { activeSession } from '../security/sessions.js';
 import { cookies } from '../security/cookies.js';
 import { db } from '../db/index.js';
 const users = new UserRepository();
-export const requireAuth: RequestHandler = (req, _res, next) => {
+export const requireAuth: RequestHandler = async (req, _res, next) => {
   try {
     const token = cookies(req)['ft_access'];
     if (!token) throw new Error();
     const claims = verifyToken(token);
-    const session = activeSession(claims.sessionId);
-    const user = users.findById(claims.userId);
+    const session = await activeSession(claims.sessionId);
+    const user = await users.findById(claims.userId);
     if (!user || session.user_id !== user.id || !user.email_verified) throw new Error();
     req.userId = user.id;
     req.sessionId = session.id;
-    db.prepare('UPDATE sessions SET last_seen_at=? WHERE id=?').run(Date.now(), session.id);
+    await db.prepare('UPDATE sessions SET last_seen_at=? WHERE id=?').run(Date.now(), session.id);
     next();
   } catch (error) {
     next(

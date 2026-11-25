@@ -15,7 +15,9 @@
     "dev:demo": "concurrently -k -n DEMO,WEB -c cyan,blue \"npm run dev:demo -w backend\" \"npm start -w Frontend\"",
     "build": "npm run build -w backend && npm run build -w Frontend",
     "test": "npm run test -w backend && npm run test -w Frontend",
-    "check": "npm run build && npm test"
+    "check": "npm run check:secrets && npm run lint && npm run build && npm test && npm run test:postgres -w backend",
+    "lint": "npm run lint -w backend && npm run lint -w Frontend",
+    "check:secrets": "node scripts/check-secrets.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

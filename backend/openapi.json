@@ -2,13 +2,13 @@
   "openapi": "3.1.0",
   "info": {
     "title": "FinTrack by Finnet Technologies API",
-    "version": "0.2.0",
-    "description": "FinTrack cookie-session API. Get /auth/csrf and send X-CSRF-Token on all mutations. Authentication and all portfolio/transaction services persist to SQLite. See docs/SECURITY_AND_ACCOUNT_FLOWS.md for provider configuration."
+    "version": "1.0.0",
+    "description": "FinTrack by Finnet Technologies. Real cookie-session API with PostgreSQL (Supabase) or local SQLite persistence. Get /auth/csrf before mutations; keep the cookie jar and send X-CSRF-Token. Access/refresh tokens are HttpOnly cookies and never returned in JSON. Registration requires email confirmation; Google and email MFA are optional account features. Canonical /api/v1 and compatibility /api expose the same protected routes."
   },
   "servers": [
     {
       "url": "/api/v1",
-      "description": "Versioned API"
+      "description": "Canonical API on this host"
     },
     {
       "url": "/api",
@@ -20,16 +20,16 @@
       "name": "Authentication"
     },
     {
+      "name": "Users"
+    },
+    {
       "name": "Portfolios"
     },
     {
       "name": "Transactions"
     },
     {
-      "name": "Holdings"
-    },
-    {
-      "name": "Users"
+      "name": "Members"
     }
   ],
   "paths": {
@@ -45,26 +45,27 @@
           }
         ],
         "responses": {
-          "201": {
+          "200": {
             "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "data"
-                  ],
+                  "additionalProperties": false,
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/Session"
+                      "$ref": "#/components/schemas/Registration"
                     }
-                  }
+                  },
+                  "required": [
+                    "data"
+                  ]
                 }
               }
             }
           },
           "400": {
-            "description": "Malformed JSON",
+            "description": "Malformed JSON or invalid single-use link",
             "content": {
               "application/json": {
                 "schema": {
@@ -74,7 +75,17 @@
             }
           },
           "401": {
-            "description": "Invalid credentials or missing/expired token",
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -84,7 +95,7 @@
             }
           },
           "404": {
-            "description": "Resource absent or belongs to another analyst",
+            "description": "Resource missing or inaccessible to this analyst",
             "content": {
               "application/json": {
                 "schema": {
@@ -94,7 +105,7 @@
             }
           },
           "409": {
-            "description": "Email already in use",
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
             "content": {
               "application/json": {
                 "schema": {
@@ -104,7 +115,7 @@
             }
           },
           "422": {
-            "description": "Invalid input, oversell, locked currency or invalidated historical ledger",
+            "description": "Field validation, oversell, future date, or locked currency",
             "content": {
               "application/json": {
                 "schema": {
@@ -114,17 +125,7 @@
             }
           },
           "429": {
-            "description": "Too many authentication attempts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Business service intentionally unimplemented in scaffold mode",
+            "description": "Rate limit or MFA resend cooldown",
             "content": {
               "application/json": {
                 "schema": {
@@ -134,7 +135,17 @@
             }
           },
           "500": {
-            "description": "Unexpected server failure",
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -153,7 +164,9 @@
               }
             }
           }
-        }
+        },
+        "operationId": "post_auth_register",
+        "parameters": []
       }
     },
     "/auth/login": {
@@ -174,20 +187,28 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "data"
-                  ],
+                  "additionalProperties": false,
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/Session"
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Session"
+                        },
+                        {
+                          "$ref": "#/components/schemas/MfaChallenge"
+                        }
+                      ]
                     }
-                  }
+                  },
+                  "required": [
+                    "data"
+                  ]
                 }
               }
             }
           },
           "400": {
-            "description": "Malformed JSON",
+            "description": "Malformed JSON or invalid single-use link",
             "content": {
               "application/json": {
                 "schema": {
@@ -197,7 +218,17 @@
             }
           },
           "401": {
-            "description": "Invalid credentials or missing/expired token",
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -207,7 +238,7 @@
             }
           },
           "404": {
-            "description": "Resource absent or belongs to another analyst",
+            "description": "Resource missing or inaccessible to this analyst",
             "content": {
               "application/json": {
                 "schema": {
@@ -217,7 +248,7 @@
             }
           },
           "409": {
-            "description": "Email already in use",
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
             "content": {
               "application/json": {
                 "schema": {
@@ -227,7 +258,7 @@
             }
           },
           "422": {
-            "description": "Invalid input, oversell, locked currency or invalidated historical ledger",
+            "description": "Field validation, oversell, future date, or locked currency",
             "content": {
               "application/json": {
                 "schema": {
@@ -237,17 +268,7 @@
             }
           },
           "429": {
-            "description": "Too many authentication attempts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Business service intentionally unimplemented in scaffold mode",
+            "description": "Rate limit or MFA resend cooldown",
             "content": {
               "application/json": {
                 "schema": {
@@ -257,7 +278,17 @@
             }
           },
           "500": {
-            "description": "Unexpected server failure",
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -276,16 +307,22 @@
               }
             }
           }
-        }
+        },
+        "operationId": "post_auth_login",
+        "parameters": []
       }
     },
     "/auth/me": {
       "get": {
         "summary": "Get current analyst",
         "tags": [
-          "Users"
+          "Authentication"
         ],
-        "security": [],
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -293,20 +330,21 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "data"
-                  ],
+                  "additionalProperties": false,
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/Identity"
+                      "$ref": "#/components/schemas/Session"
                     }
-                  }
+                  },
+                  "required": [
+                    "data"
+                  ]
                 }
               }
             }
           },
           "400": {
-            "description": "Malformed JSON",
+            "description": "Malformed JSON or invalid single-use link",
             "content": {
               "application/json": {
                 "schema": {
@@ -316,7 +354,17 @@
             }
           },
           "401": {
-            "description": "Invalid credentials or missing/expired token",
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -326,7 +374,7 @@
             }
           },
           "404": {
-            "description": "Resource absent or belongs to another analyst",
+            "description": "Resource missing or inaccessible to this analyst",
             "content": {
               "application/json": {
                 "schema": {
@@ -336,7 +384,7 @@
             }
           },
           "409": {
-            "description": "Email already in use",
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
             "content": {
               "application/json": {
                 "schema": {
@@ -346,7 +394,7 @@
             }
           },
           "422": {
-            "description": "Invalid input, oversell, locked currency or invalidated historical ledger",
+            "description": "Field validation, oversell, future date, or locked currency",
             "content": {
               "application/json": {
                 "schema": {
@@ -356,17 +404,7 @@
             }
           },
           "429": {
-            "description": "Too many authentication attempts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Business service intentionally unimplemented in scaffold mode",
+            "description": "Rate limit or MFA resend cooldown",
             "content": {
               "application/json": {
                 "schema": {
@@ -376,7 +414,17 @@
             }
           },
           "500": {
-            "description": "Unexpected server failure",
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -385,7 +433,9 @@
               }
             }
           }
-        }
+        },
+        "operationId": "get_auth_me",
+        "parameters": []
       }
     },
     "/portfolios": {
@@ -406,9 +456,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "data"
-                  ],
+                  "additionalProperties": false,
                   "properties": {
                     "data": {
                       "type": "array",
@@ -416,13 +464,16 @@
                         "$ref": "#/components/schemas/Portfolio"
                       }
                     }
-                  }
+                  },
+                  "required": [
+                    "data"
+                  ]
                 }
               }
             }
           },
           "400": {
-            "description": "Malformed JSON",
+            "description": "Malformed JSON or invalid single-use link",
             "content": {
               "application/json": {
                 "schema": {
@@ -432,7 +483,17 @@
             }
           },
           "401": {
-            "description": "Invalid credentials or missing/expired token",
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -442,7 +503,7 @@
             }
           },
           "404": {
-            "description": "Resource absent or belongs to another analyst",
+            "description": "Resource missing or inaccessible to this analyst",
             "content": {
               "application/json": {
                 "schema": {
@@ -452,7 +513,7 @@
             }
           },
           "409": {
-            "description": "Email already in use",
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
             "content": {
               "application/json": {
                 "schema": {
@@ -462,7 +523,7 @@
             }
           },
           "422": {
-            "description": "Invalid input, oversell, locked currency or invalidated historical ledger",
+            "description": "Field validation, oversell, future date, or locked currency",
             "content": {
               "application/json": {
                 "schema": {
@@ -472,17 +533,7 @@
             }
           },
           "429": {
-            "description": "Too many authentication attempts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Business service intentionally unimplemented in scaffold mode",
+            "description": "Rate limit or MFA resend cooldown",
             "content": {
               "application/json": {
                 "schema": {
@@ -492,7 +543,17 @@
             }
           },
           "500": {
-            "description": "Unexpected server failure",
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -501,7 +562,9 @@
               }
             }
           }
-        }
+        },
+        "operationId": "get_portfolios",
+        "parameters": []
       },
       "post": {
         "summary": "Create portfolio",
@@ -510,9 +573,7 @@
         ],
         "security": [
           {
-            "cookieAuth": []
-          },
-          {
+            "cookieAuth": [],
             "csrf": []
           }
         ],
@@ -523,20 +584,21 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "data"
-                  ],
+                  "additionalProperties": false,
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/Portfolio"
                     }
-                  }
+                  },
+                  "required": [
+                    "data"
+                  ]
                 }
               }
             }
           },
           "400": {
-            "description": "Malformed JSON",
+            "description": "Malformed JSON or invalid single-use link",
             "content": {
               "application/json": {
                 "schema": {
@@ -546,7 +608,17 @@
             }
           },
           "401": {
-            "description": "Invalid credentials or missing/expired token",
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -556,7 +628,7 @@
             }
           },
           "404": {
-            "description": "Resource absent or belongs to another analyst",
+            "description": "Resource missing or inaccessible to this analyst",
             "content": {
               "application/json": {
                 "schema": {
@@ -566,7 +638,7 @@
             }
           },
           "409": {
-            "description": "Email already in use",
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
             "content": {
               "application/json": {
                 "schema": {
@@ -576,7 +648,7 @@
             }
           },
           "422": {
-            "description": "Invalid input, oversell, locked currency or invalidated historical ledger",
+            "description": "Field validation, oversell, future date, or locked currency",
             "content": {
               "application/json": {
                 "schema": {
@@ -586,17 +658,7 @@
             }
           },
           "429": {
-            "description": "Too many authentication attempts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Business service intentionally unimplemented in scaffold mode",
+            "description": "Rate limit or MFA resend cooldown",
             "content": {
               "application/json": {
                 "schema": {
@@ -606,7 +668,17 @@
             }
           },
           "500": {
-            "description": "Unexpected server failure",
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -625,7 +697,9 @@
               }
             }
           }
-        }
+        },
+        "operationId": "post_portfolios",
+        "parameters": []
       }
     },
     "/portfolios/{id}": {
@@ -646,20 +720,21 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "data"
-                  ],
+                  "additionalProperties": false,
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/Portfolio"
                     }
-                  }
+                  },
+                  "required": [
+                    "data"
+                  ]
                 }
               }
             }
           },
           "400": {
-            "description": "Malformed JSON",
+            "description": "Malformed JSON or invalid single-use link",
             "content": {
               "application/json": {
                 "schema": {
@@ -669,7 +744,17 @@
             }
           },
           "401": {
-            "description": "Invalid credentials or missing/expired token",
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -679,7 +764,7 @@
             }
           },
           "404": {
-            "description": "Resource absent or belongs to another analyst",
+            "description": "Resource missing or inaccessible to this analyst",
             "content": {
               "application/json": {
                 "schema": {
@@ -689,7 +774,7 @@
             }
           },
           "409": {
-            "description": "Email already in use",
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
             "content": {
               "application/json": {
                 "schema": {
@@ -699,7 +784,7 @@
             }
           },
           "422": {
-            "description": "Invalid input, oversell, locked currency or invalidated historical ledger",
+            "description": "Field validation, oversell, future date, or locked currency",
             "content": {
               "application/json": {
                 "schema": {
@@ -709,17 +794,7 @@
             }
           },
           "429": {
-            "description": "Too many authentication attempts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Business service intentionally unimplemented in scaffold mode",
+            "description": "Rate limit or MFA resend cooldown",
             "content": {
               "application/json": {
                 "schema": {
@@ -729,7 +804,17 @@
             }
           },
           "500": {
-            "description": "Unexpected server failure",
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -741,14 +826,15 @@
         },
         "parameters": [
           {
-            "name": "id",
             "in": "path",
+            "name": "id",
             "required": true,
             "schema": {
               "type": "string"
             }
           }
-        ]
+        ],
+        "operationId": "get_portfolios_id"
       },
       "put": {
         "summary": "Update own portfolio",
@@ -757,9 +843,7 @@
         ],
         "security": [
           {
-            "cookieAuth": []
-          },
-          {
+            "cookieAuth": [],
             "csrf": []
           }
         ],
@@ -770,20 +854,21 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "data"
-                  ],
+                  "additionalProperties": false,
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/Portfolio"
                     }
-                  }
+                  },
+                  "required": [
+                    "data"
+                  ]
                 }
               }
             }
           },
           "400": {
-            "description": "Malformed JSON",
+            "description": "Malformed JSON or invalid single-use link",
             "content": {
               "application/json": {
                 "schema": {
@@ -793,7 +878,17 @@
             }
           },
           "401": {
-            "description": "Invalid credentials or missing/expired token",
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -803,7 +898,7 @@
             }
           },
           "404": {
-            "description": "Resource absent or belongs to another analyst",
+            "description": "Resource missing or inaccessible to this analyst",
             "content": {
               "application/json": {
                 "schema": {
@@ -813,7 +908,7 @@
             }
           },
           "409": {
-            "description": "Email already in use",
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
             "content": {
               "application/json": {
                 "schema": {
@@ -823,7 +918,7 @@
             }
           },
           "422": {
-            "description": "Invalid input, oversell, locked currency or invalidated historical ledger",
+            "description": "Field validation, oversell, future date, or locked currency",
             "content": {
               "application/json": {
                 "schema": {
@@ -833,17 +928,7 @@
             }
           },
           "429": {
-            "description": "Too many authentication attempts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Business service intentionally unimplemented in scaffold mode",
+            "description": "Rate limit or MFA resend cooldown",
             "content": {
               "application/json": {
                 "schema": {
@@ -853,7 +938,17 @@
             }
           },
           "500": {
-            "description": "Unexpected server failure",
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -865,8 +960,8 @@
         },
         "parameters": [
           {
-            "name": "id",
             "in": "path",
+            "name": "id",
             "required": true,
             "schema": {
               "type": "string"
@@ -882,7 +977,8 @@
               }
             }
           }
-        }
+        },
+        "operationId": "put_portfolios_id"
       },
       "delete": {
         "summary": "Delete portfolio and cascade transactions",
@@ -891,18 +987,16 @@
         ],
         "security": [
           {
-            "cookieAuth": []
-          },
-          {
+            "cookieAuth": [],
             "csrf": []
           }
         ],
         "responses": {
           "204": {
-            "description": "Success"
+            "description": "Deleted; no body"
           },
           "400": {
-            "description": "Malformed JSON",
+            "description": "Malformed JSON or invalid single-use link",
             "content": {
               "application/json": {
                 "schema": {
@@ -912,7 +1006,17 @@
             }
           },
           "401": {
-            "description": "Invalid credentials or missing/expired token",
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -922,7 +1026,7 @@
             }
           },
           "404": {
-            "description": "Resource absent or belongs to another analyst",
+            "description": "Resource missing or inaccessible to this analyst",
             "content": {
               "application/json": {
                 "schema": {
@@ -932,7 +1036,7 @@
             }
           },
           "409": {
-            "description": "Email already in use",
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
             "content": {
               "application/json": {
                 "schema": {
@@ -942,7 +1046,7 @@
             }
           },
           "422": {
-            "description": "Invalid input, oversell, locked currency or invalidated historical ledger",
+            "description": "Field validation, oversell, future date, or locked currency",
             "content": {
               "application/json": {
                 "schema": {
@@ -952,17 +1056,7 @@
             }
           },
           "429": {
-            "description": "Too many authentication attempts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Business service intentionally unimplemented in scaffold mode",
+            "description": "Rate limit or MFA resend cooldown",
             "content": {
               "application/json": {
                 "schema": {
@@ -972,7 +1066,17 @@
             }
           },
           "500": {
-            "description": "Unexpected server failure",
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -984,14 +1088,15 @@
         },
         "parameters": [
           {
-            "name": "id",
             "in": "path",
+            "name": "id",
             "required": true,
             "schema": {
               "type": "string"
             }
           }
-        ]
+        ],
+        "operationId": "delete_portfolios_id"
       }
     },
     "/portfolios/{id}/transactions": {
@@ -1012,9 +1117,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "data"
-                  ],
+                  "additionalProperties": false,
                   "properties": {
                     "data": {
                       "type": "array",
@@ -1022,13 +1125,16 @@
                         "$ref": "#/components/schemas/Transaction"
                       }
                     }
-                  }
+                  },
+                  "required": [
+                    "data"
+                  ]
                 }
               }
             }
           },
           "400": {
-            "description": "Malformed JSON",
+            "description": "Malformed JSON or invalid single-use link",
             "content": {
               "application/json": {
                 "schema": {
@@ -1038,7 +1144,17 @@
             }
           },
           "401": {
-            "description": "Invalid credentials or missing/expired token",
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -1048,7 +1164,7 @@
             }
           },
           "404": {
-            "description": "Resource absent or belongs to another analyst",
+            "description": "Resource missing or inaccessible to this analyst",
             "content": {
               "application/json": {
                 "schema": {
@@ -1058,7 +1174,7 @@
             }
           },
           "409": {
-            "description": "Email already in use",
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
             "content": {
               "application/json": {
                 "schema": {
@@ -1068,7 +1184,7 @@
             }
           },
           "422": {
-            "description": "Invalid input, oversell, locked currency or invalidated historical ledger",
+            "description": "Field validation, oversell, future date, or locked currency",
             "content": {
               "application/json": {
                 "schema": {
@@ -1078,17 +1194,7 @@
             }
           },
           "429": {
-            "description": "Too many authentication attempts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Business service intentionally unimplemented in scaffold mode",
+            "description": "Rate limit or MFA resend cooldown",
             "content": {
               "application/json": {
                 "schema": {
@@ -1098,7 +1204,17 @@
             }
           },
           "500": {
-            "description": "Unexpected server failure",
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -1110,14 +1226,16 @@
         },
         "parameters": [
           {
-            "name": "id",
             "in": "path",
+            "name": "id",
             "required": true,
             "schema": {
               "type": "string"
             }
           }
-        ]
+        ],
+        "operationId": "get_portfolios_id_transactions",
+        "description": "Returns the full ledger. Display filters/sorting/pagination are in Angular; Excel export supports query filters."
       },
       "post": {
         "summary": "Record transaction and validate historical ledger",
@@ -1126,9 +1244,7 @@
         ],
         "security": [
           {
-            "cookieAuth": []
-          },
-          {
+            "cookieAuth": [],
             "csrf": []
           }
         ],
@@ -1139,20 +1255,21 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "data"
-                  ],
+                  "additionalProperties": false,
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/Transaction"
                     }
-                  }
+                  },
+                  "required": [
+                    "data"
+                  ]
                 }
               }
             }
           },
           "400": {
-            "description": "Malformed JSON",
+            "description": "Malformed JSON or invalid single-use link",
             "content": {
               "application/json": {
                 "schema": {
@@ -1162,7 +1279,17 @@
             }
           },
           "401": {
-            "description": "Invalid credentials or missing/expired token",
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -1172,7 +1299,7 @@
             }
           },
           "404": {
-            "description": "Resource absent or belongs to another analyst",
+            "description": "Resource missing or inaccessible to this analyst",
             "content": {
               "application/json": {
                 "schema": {
@@ -1182,7 +1309,7 @@
             }
           },
           "409": {
-            "description": "Email already in use",
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
             "content": {
               "application/json": {
                 "schema": {
@@ -1192,7 +1319,7 @@
             }
           },
           "422": {
-            "description": "Invalid input, oversell, locked currency or invalidated historical ledger",
+            "description": "Field validation, oversell, future date, or locked currency",
             "content": {
               "application/json": {
                 "schema": {
@@ -1202,17 +1329,7 @@
             }
           },
           "429": {
-            "description": "Too many authentication attempts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Business service intentionally unimplemented in scaffold mode",
+            "description": "Rate limit or MFA resend cooldown",
             "content": {
               "application/json": {
                 "schema": {
@@ -1222,7 +1339,17 @@
             }
           },
           "500": {
-            "description": "Unexpected server failure",
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -1234,8 +1361,8 @@
         },
         "parameters": [
           {
-            "name": "id",
             "in": "path",
+            "name": "id",
             "required": true,
             "schema": {
               "type": "string"
@@ -1251,7 +1378,9 @@
               }
             }
           }
-        }
+        },
+        "operationId": "post_portfolios_id_transactions",
+        "description": "Validates normalized input and replays the complete ledger in one transaction. Backdated trades must leave every later SELL covered."
       }
     },
     "/transactions/{id}": {
@@ -1262,18 +1391,16 @@
         ],
         "security": [
           {
-            "cookieAuth": []
-          },
-          {
+            "cookieAuth": [],
             "csrf": []
           }
         ],
         "responses": {
           "204": {
-            "description": "Success"
+            "description": "Deleted; no body"
           },
           "400": {
-            "description": "Malformed JSON",
+            "description": "Malformed JSON or invalid single-use link",
             "content": {
               "application/json": {
                 "schema": {
@@ -1283,7 +1410,17 @@
             }
           },
           "401": {
-            "description": "Invalid credentials or missing/expired token",
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -1293,7 +1430,7 @@
             }
           },
           "404": {
-            "description": "Resource absent or belongs to another analyst",
+            "description": "Resource missing or inaccessible to this analyst",
             "content": {
               "application/json": {
                 "schema": {
@@ -1303,7 +1440,7 @@
             }
           },
           "409": {
-            "description": "Email already in use",
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
             "content": {
               "application/json": {
                 "schema": {
@@ -1313,7 +1450,7 @@
             }
           },
           "422": {
-            "description": "Invalid input, oversell, locked currency or invalidated historical ledger",
+            "description": "Field validation, oversell, future date, or locked currency",
             "content": {
               "application/json": {
                 "schema": {
@@ -1323,17 +1460,7 @@
             }
           },
           "429": {
-            "description": "Too many authentication attempts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Business service intentionally unimplemented in scaffold mode",
+            "description": "Rate limit or MFA resend cooldown",
             "content": {
               "application/json": {
                 "schema": {
@@ -1343,7 +1470,17 @@
             }
           },
           "500": {
-            "description": "Unexpected server failure",
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -1355,21 +1492,22 @@
         },
         "parameters": [
           {
-            "name": "id",
             "in": "path",
+            "name": "id",
             "required": true,
             "schema": {
               "type": "string"
             }
           }
-        ]
+        ],
+        "operationId": "delete_transactions_id"
       }
     },
     "/portfolios/{id}/summary": {
       "get": {
         "summary": "Moving-average holdings and indicative valuation",
         "tags": [
-          "Holdings"
+          "Portfolios"
         ],
         "security": [
           {
@@ -1383,20 +1521,21 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": [
-                    "data"
-                  ],
+                  "additionalProperties": false,
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/Summary"
                     }
-                  }
+                  },
+                  "required": [
+                    "data"
+                  ]
                 }
               }
             }
           },
           "400": {
-            "description": "Malformed JSON",
+            "description": "Malformed JSON or invalid single-use link",
             "content": {
               "application/json": {
                 "schema": {
@@ -1406,7 +1545,17 @@
             }
           },
           "401": {
-            "description": "Invalid credentials or missing/expired token",
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -1416,7 +1565,7 @@
             }
           },
           "404": {
-            "description": "Resource absent or belongs to another analyst",
+            "description": "Resource missing or inaccessible to this analyst",
             "content": {
               "application/json": {
                 "schema": {
@@ -1426,7 +1575,7 @@
             }
           },
           "409": {
-            "description": "Email already in use",
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
             "content": {
               "application/json": {
                 "schema": {
@@ -1436,7 +1585,7 @@
             }
           },
           "422": {
-            "description": "Invalid input, oversell, locked currency or invalidated historical ledger",
+            "description": "Field validation, oversell, future date, or locked currency",
             "content": {
               "application/json": {
                 "schema": {
@@ -1446,17 +1595,7 @@
             }
           },
           "429": {
-            "description": "Too many authentication attempts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Business service intentionally unimplemented in scaffold mode",
+            "description": "Rate limit or MFA resend cooldown",
             "content": {
               "application/json": {
                 "schema": {
@@ -1466,7 +1605,17 @@
             }
           },
           "500": {
-            "description": "Unexpected server failure",
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -1478,138 +1627,653 @@
         },
         "parameters": [
           {
-            "name": "id",
             "in": "path",
+            "name": "id",
             "required": true,
             "schema": {
               "type": "string"
             }
           }
-        ]
+        ],
+        "operationId": "get_portfolios_id_summary"
       }
     },
     "/users/me": {
       "get": {
         "summary": "GET /users/me",
         "tags": [
-          "Account extension"
+          "Users"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
-          }
-        },
-        "security": []
-      },
-      "patch": {
-        "summary": "PATCH /users/me",
-        "tags": [
-          "Account extension"
-        ],
-        "responses": {
-          "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
-          "401": {
-            "description": "Session missing or expired"
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
-          "403": {
-            "description": "CSRF or authorization rejected"
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
-          "422": {
-            "description": "Invalid input"
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
           {
+            "cookieAuth": []
+          }
+        ],
+        "operationId": "get_users_me",
+        "parameters": []
+      },
+      "patch": {
+        "summary": "PATCH /users/me",
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": [],
             "csrf": []
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
+                "$ref": "#/components/schemas/ProfileInput"
               }
             }
           }
-        }
+        },
+        "operationId": "patch_users_me",
+        "parameters": []
       }
     },
     "/auth/csrf": {
       "get": {
         "summary": "GET /auth/csrf",
         "tags": [
-          "Account extension"
+          "Authentication"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "csrfToken": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "csrfToken"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
-        "security": []
+        "security": [],
+        "operationId": "get_auth_csrf",
+        "parameters": []
       }
     },
     "/auth/config": {
       "get": {
         "summary": "GET /auth/config",
         "tags": [
-          "Account extension"
+          "Authentication"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AuthConfig"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
-        "security": []
+        "security": [],
+        "operationId": "get_auth_config",
+        "parameters": []
       }
     },
     "/auth/google": {
       "post": {
         "summary": "POST /auth/google",
         "tags": [
-          "Account extension"
+          "Authentication"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Session"
+                        },
+                        {
+                          "$ref": "#/components/schemas/MfaChallenge"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1618,35 +2282,134 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
+                "$ref": "#/components/schemas/GoogleInput"
               }
             }
           }
-        }
+        },
+        "operationId": "post_auth_google",
+        "parameters": []
       }
     },
     "/auth/mfa/verify": {
       "post": {
         "summary": "POST /auth/mfa/verify",
         "tags": [
-          "Account extension"
+          "Authentication"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Session"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1655,35 +2418,134 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
+                "$ref": "#/components/schemas/MfaVerifyInput"
               }
             }
           }
-        }
+        },
+        "operationId": "post_auth_mfa_verify",
+        "parameters": []
       }
     },
     "/auth/mfa/resend": {
       "post": {
         "summary": "POST /auth/mfa/resend",
         "tags": [
-          "Account extension"
+          "Authentication"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MfaChallenge"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1692,72 +2554,261 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
+                "$ref": "#/components/schemas/MfaResendInput"
               }
             }
           }
-        }
+        },
+        "operationId": "post_auth_mfa_resend",
+        "parameters": []
       }
     },
     "/auth/refresh": {
       "post": {
         "summary": "POST /auth/refresh",
         "tags": [
-          "Account extension"
+          "Authentication"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Session"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
           {
+            "refreshCookie": [],
             "csrf": []
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
-              }
-            }
-          }
-        }
+        "operationId": "post_auth_refresh",
+        "parameters": []
       }
     },
     "/auth/logout": {
       "post": {
         "summary": "POST /auth/logout",
         "tags": [
-          "Account extension"
+          "Authentication"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Message"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1765,36 +2816,125 @@
             "csrf": []
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
-              }
-            }
-          }
-        }
+        "operationId": "post_auth_logout",
+        "parameters": []
       }
     },
     "/auth/verify-email": {
       "post": {
         "summary": "POST /auth/verify-email",
         "tags": [
-          "Account extension"
+          "Authentication"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Message"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1803,35 +2943,134 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
+                "$ref": "#/components/schemas/TokenInput"
               }
             }
           }
-        }
+        },
+        "operationId": "post_auth_verify_email",
+        "parameters": []
       }
     },
     "/auth/resend-verification": {
       "post": {
         "summary": "POST /auth/resend-verification",
         "tags": [
-          "Account extension"
+          "Authentication"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Message"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1840,35 +3079,134 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
+                "$ref": "#/components/schemas/EmailInput"
               }
             }
           }
-        }
+        },
+        "operationId": "post_auth_resend_verification",
+        "parameters": []
       }
     },
     "/auth/forgot-password": {
       "post": {
         "summary": "POST /auth/forgot-password",
         "tags": [
-          "Account extension"
+          "Authentication"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Message"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1877,35 +3215,134 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
+                "$ref": "#/components/schemas/EmailInput"
               }
             }
           }
-        }
+        },
+        "operationId": "post_auth_forgot_password",
+        "parameters": []
       }
     },
     "/auth/reset-password": {
       "post": {
         "summary": "POST /auth/reset-password",
         "tags": [
-          "Account extension"
+          "Authentication"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Message"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1914,35 +3351,134 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
+                "$ref": "#/components/schemas/ResetInput"
               }
             }
           }
-        }
+        },
+        "operationId": "post_auth_reset_password",
+        "parameters": []
       }
     },
     "/auth/set-password": {
       "post": {
         "summary": "POST /auth/set-password",
         "tags": [
-          "Account extension"
+          "Authentication"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Message"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1951,149 +3487,552 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
+                "$ref": "#/components/schemas/ResetInput"
               }
             }
           }
-        }
+        },
+        "operationId": "post_auth_set_password",
+        "parameters": []
       }
     },
     "/auth/request-set-password": {
       "post": {
         "summary": "POST /auth/request-set-password",
         "tags": [
-          "Account extension"
+          "Authentication"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Message"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
           {
+            "cookieAuth": [],
             "csrf": []
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
-              }
-            }
-          }
-        }
+        "operationId": "post_auth_request_set_password",
+        "parameters": []
       }
     },
     "/auth/change-password": {
       "post": {
         "summary": "POST /auth/change-password",
         "tags": [
-          "Account extension"
+          "Authentication"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Message"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
           {
+            "cookieAuth": [],
             "csrf": []
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
+                "$ref": "#/components/schemas/ChangePasswordInput"
               }
             }
           }
-        }
+        },
+        "operationId": "post_auth_change_password",
+        "parameters": []
       }
     },
     "/users/me/preferences": {
       "patch": {
         "summary": "PATCH /users/me/preferences",
         "tags": [
-          "Account extension"
+          "Users"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/User"
+                        },
+                        {
+                          "$ref": "#/components/schemas/MfaChallenge"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
           {
+            "cookieAuth": [],
             "csrf": []
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
+                "$ref": "#/components/schemas/PreferencesInput"
               }
             }
           }
-        }
+        },
+        "operationId": "patch_users_me_preferences",
+        "parameters": []
       }
     },
     "/portfolios/{id}/members": {
       "get": {
         "summary": "GET /portfolios/{id}/members",
         "tags": [
-          "Account extension"
+          "Members"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Member"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
-        "security": [],
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2103,29 +4042,129 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "operationId": "get_portfolios_id_members"
       },
       "put": {
         "summary": "PUT /portfolios/{id}/members",
         "tags": [
-          "Account extension"
+          "Members"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "description": "Updated member permission record."
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
           {
+            "cookieAuth": [],
             "csrf": []
           }
         ],
@@ -2140,39 +4179,139 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
+                "$ref": "#/components/schemas/MemberEmailInput"
               }
             }
           }
-        }
+        },
+        "operationId": "put_portfolios_id_members"
       }
     },
     "/portfolios/{id}/members/{userId}": {
       "put": {
         "summary": "PUT /portfolios/{id}/members/{userId}",
         "tags": [
-          "Account extension"
+          "Members"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "description": "Updated member permission record."
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
           {
+            "cookieAuth": [],
             "csrf": []
           }
         ],
@@ -2195,37 +4334,120 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "description": "See account flow guide and route Zod schema for operation fields."
+                "$ref": "#/components/schemas/MemberInput"
               }
             }
           }
-        }
+        },
+        "operationId": "put_portfolios_id_members_userId"
       },
       "delete": {
         "summary": "DELETE /portfolios/{id}/members/{userId}",
         "tags": [
-          "Account extension"
+          "Members"
         ],
         "responses": {
-          "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+          "204": {
+            "description": "Deleted; no body"
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "security": [
           {
+            "cookieAuth": [],
             "csrf": []
           }
         ],
@@ -2246,30 +4468,124 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "operationId": "delete_portfolios_id_members_userId"
       }
     },
     "/portfolios/{id}/transactions/export.xlsx": {
       "get": {
         "summary": "GET /portfolios/{id}/transactions/export.xlsx",
         "tags": [
-          "Account extension"
+          "Transactions"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Excel workbook attachment",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
-        "security": [],
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2278,31 +4594,193 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "instrument",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "BUY",
+                "SELL",
+                ""
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tradeDate",
+                "instrument",
+                "quantity",
+                "unitPrice",
+                "amount"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
           }
-        ]
+        ],
+        "operationId": "get_portfolios_id_transactions_export_xlsx"
       }
     },
     "/transactions/{id}/receipt": {
       "get": {
         "summary": "GET /transactions/{id}/receipt",
         "tags": [
-          "Account extension"
+          "Transactions"
         ],
         "responses": {
           "200": {
-            "description": "Success; JSON data envelope, or XLSX binary for export."
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Receipt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON or invalid single-use link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Session missing or expired"
+            "description": "Invalid credentials or missing/expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "403": {
-            "description": "CSRF or authorization rejected"
+            "description": "CSRF rejected, unverified email, or insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource missing or inaccessible to this analyst",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict: existing email or deleting a BUY would invalidate a later SELL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Invalid input"
+            "description": "Field validation, oversell, future date, or locked currency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or MFA resend cooldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error; requestId identifies logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Email provider or service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
-        "security": [],
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2312,7 +4790,8 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "operationId": "get_transactions_id_receipt"
       }
     }
   },
@@ -2327,21 +4806,21 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-CSRF-Token"
+      },
+      "refreshCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "ft_refresh"
       }
     },
     "schemas": {
       "Error": {
         "type": "object",
-        "required": [
-          "error"
-        ],
+        "additionalProperties": false,
         "properties": {
           "error": {
             "type": "object",
-            "required": [
-              "code",
-              "message"
-            ],
+            "additionalProperties": false,
             "properties": {
               "code": {
                 "type": "string"
@@ -2356,6 +4835,7 @@
                 "type": "array",
                 "items": {
                   "type": "object",
+                  "additionalProperties": false,
                   "properties": {
                     "field": {
                       "type": "string"
@@ -2363,12 +4843,23 @@
                     "message": {
                       "type": "string"
                     }
-                  }
+                  },
+                  "required": [
+                    "field",
+                    "message"
+                  ]
                 }
               }
-            }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
           }
-        }
+        },
+        "required": [
+          "error"
+        ]
       },
       "PortfolioInput": {
         "type": "object",
@@ -2411,8 +4902,9 @@
         "properties": {
           "instrument": {
             "type": "string",
-            "pattern": "^[A-Z0-9][A-Z0-9.-]{0,19}$",
-            "example": "SCOM"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]{0,19}$",
+            "example": "SCOM",
+            "description": "Trimmed and uppercased by the server."
           },
           "type": {
             "type": "string",
@@ -2441,11 +4933,7 @@
       },
       "User": {
         "type": "object",
-        "required": [
-          "id",
-          "name",
-          "email"
-        ],
+        "additionalProperties": false,
         "properties": {
           "id": {
             "type": "string"
@@ -2456,8 +4944,47 @@
           "email": {
             "type": "string",
             "format": "email"
+          },
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "analyst",
+              "viewer"
+            ]
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "emailMfaEnabled": {
+            "type": "boolean"
+          },
+          "transactionEmails": {
+            "type": "boolean"
+          },
+          "productEmails": {
+            "type": "boolean"
+          },
+          "onboardingCompleted": {
+            "type": "boolean"
+          },
+          "hasPassword": {
+            "type": "boolean"
           }
-        }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "role",
+          "emailVerified"
+        ]
       },
       "Portfolio": {
         "type": "object",
@@ -2471,7 +4998,8 @@
           "totalInvested",
           "unrealizedGain",
           "holdingsCount",
-          "transactionCount"
+          "transactionCount",
+          "permissions"
         ],
         "properties": {
           "name": {
@@ -2512,25 +5040,20 @@
           },
           "transactionCount": {
             "type": "integer"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/Permissions"
           }
         }
       },
       "Transaction": {
         "type": "object",
-        "required": [
-          "instrument",
-          "type",
-          "quantity",
-          "unitPrice",
-          "tradeDate",
-          "id",
-          "createdAt"
-        ],
         "properties": {
           "instrument": {
             "type": "string",
-            "pattern": "^[A-Z0-9][A-Z0-9.-]{0,19}$",
-            "example": "SCOM"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]{0,19}$",
+            "example": "SCOM",
+            "description": "Trimmed and uppercased by the server."
           },
           "type": {
             "type": "string",
@@ -2553,7 +5076,7 @@
           "tradeDate": {
             "type": "string",
             "format": "date",
-            "description": "A real date, on or before today (UTC)."
+            "description": "A real date, on or before today in Africa/Nairobi."
           },
           "id": {
             "type": "string"
@@ -2562,7 +5085,16 @@
             "type": "string",
             "format": "date-time"
           }
-        }
+        },
+        "required": [
+          "instrument",
+          "type",
+          "quantity",
+          "unitPrice",
+          "tradeDate",
+          "id",
+          "createdAt"
+        ]
       },
       "Holding": {
         "type": "object",
@@ -2638,30 +5170,27 @@
       },
       "Session": {
         "type": "object",
-        "required": [
-          "token",
-          "user",
-          "demoMode"
-        ],
+        "additionalProperties": false,
         "properties": {
-          "token": {
-            "type": "string"
-          },
           "user": {
             "$ref": "#/components/schemas/User"
           },
           "demoMode": {
             "type": "boolean"
+          },
+          "session": {
+            "$ref": "#/components/schemas/SessionInfo"
           }
-        }
+        },
+        "required": [
+          "user",
+          "demoMode",
+          "session"
+        ]
       },
       "LoginInput": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "email",
-          "password"
-        ],
         "properties": {
           "email": {
             "type": "string",
@@ -2670,18 +5199,21 @@
           "password": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 72
+            "maxLength": 72,
+            "writeOnly": true
+          },
+          "stayLoggedIn": {
+            "type": "boolean"
           }
-        }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
       },
       "RegisterInput": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "name",
-          "email",
-          "password"
-        ],
         "properties": {
           "name": {
             "type": "string",
@@ -2694,23 +5226,502 @@
           },
           "password": {
             "type": "string",
-            "minLength": 12,
-            "maxLength": 72
+            "minLength": 8,
+            "maxLength": 72,
+            "pattern": "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s]).+$",
+            "writeOnly": true,
+            "description": "At least 8 characters: upper/lowercase, number and symbol; at most 72 UTF-8 bytes."
+          },
+          "acceptTerms": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "password",
+          "acceptTerms"
+        ]
+      },
+      "SessionInfo": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "accessExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sessionExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "idleTimeoutSeconds": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accessExpiresAt",
+          "sessionExpiresAt",
+          "idleTimeoutSeconds"
+        ]
+      },
+      "MfaChallenge": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requiresMfa": {
+            "type": "boolean",
+            "const": true
+          },
+          "challengeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "emailHint": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "login",
+              "enable"
+            ]
+          }
+        },
+        "required": [
+          "requiresMfa",
+          "challengeId",
+          "emailHint",
+          "expiresAt",
+          "purpose"
+        ]
+      },
+      "Message": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "Registration": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "requiresVerification": {
+            "type": "boolean",
+            "const": true
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "message",
+          "requiresVerification",
+          "email"
+        ]
+      },
+      "GoogleInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "credential": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 20000,
+            "writeOnly": true,
+            "description": "Fresh Google Identity Services ID token for the configured audience."
+          },
+          "stayLoggedIn": {
+            "type": "boolean"
+          },
+          "acceptTerms": {
+            "type": "boolean",
+            "const": true,
+            "description": "Required when creating a new account."
+          }
+        },
+        "required": [
+          "credential"
+        ]
+      },
+      "EmailInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "TokenInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 200,
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "ResetInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 200,
+            "writeOnly": true
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 72,
+            "pattern": "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s]).+$",
+            "writeOnly": true,
+            "description": "At least 8 characters: upper/lowercase, number and symbol; at most 72 UTF-8 bytes."
+          }
+        },
+        "required": [
+          "token",
+          "password"
+        ]
+      },
+      "ChangePasswordInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 72,
+            "writeOnly": true
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 72,
+            "pattern": "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s]).+$",
+            "writeOnly": true,
+            "description": "At least 8 characters: upper/lowercase, number and symbol; at most 72 UTF-8 bytes."
+          }
+        },
+        "required": [
+          "currentPassword",
+          "password"
+        ]
+      },
+      "MfaVerifyInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[0-9]{6}$",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "challengeId",
+          "code"
+        ]
+      },
+      "MfaResendInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "challengeId"
+        ]
+      },
+      "ProfileInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1400000,
+            "description": "PNG/JPEG/WebP base64 data URL, up to 1 MiB decoded, or null."
+          },
+          "onboardingCompleted": {
+            "type": "boolean"
           }
         }
       },
-      "Identity": {
+      "PreferencesInput": {
         "type": "object",
-        "required": [
-          "user",
-          "demoMode"
-        ],
+        "additionalProperties": false,
         "properties": {
-          "user": {
-            "$ref": "#/components/schemas/User"
-          },
-          "demoMode": {
+          "transactionEmails": {
             "type": "boolean"
+          },
+          "productEmails": {
+            "type": "boolean"
+          },
+          "emailMfaEnabled": {
+            "type": "boolean"
+          },
+          "currentPassword": {
+            "type": "string",
+            "maxLength": 72,
+            "writeOnly": true,
+            "description": "Needed to disable MFA without recent MFA confirmation."
+          }
+        }
+      },
+      "Permissions": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "canEdit": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "type": "boolean"
+          },
+          "canRecordTransactions": {
+            "type": "boolean"
+          },
+          "canManageMembers": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MemberInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "permission": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write"
+            ]
+          }
+        },
+        "required": [
+          "permission"
+        ]
+      },
+      "MemberEmailInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "permission": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write"
+            ]
+          }
+        },
+        "required": [
+          "email",
+          "permission"
+        ]
+      },
+      "Member": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "analyst",
+              "viewer"
+            ]
+          },
+          "permission": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write"
+            ]
+          },
+          "grantedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Receipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "receiptNumber": {
+            "type": "string"
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "portfolio": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "clientName": {
+                "type": "string"
+              },
+              "baseCurrency": {
+                "type": "string",
+                "enum": [
+                  "KES",
+                  "USD"
+                ]
+              }
+            }
+          },
+          "transaction": {
+            "type": "object",
+            "properties": {
+              "instrument": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]{0,19}$",
+                "example": "SCOM",
+                "description": "Trimmed and uppercased by the server."
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "BUY",
+                  "SELL"
+                ]
+              },
+              "quantity": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1000000000.0
+              },
+              "unitPrice": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1000000000.0,
+                "multipleOf": 0.01
+              },
+              "tradeDate": {
+                "type": "string",
+                "format": "date",
+                "description": "A real date, on or before today in Africa/Nairobi."
+              },
+              "id": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "totalValue": {
+                "type": "number"
+              }
+            }
+          },
+          "analyst": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              }
+            }
+          },
+          "disclaimer": {
+            "type": "string"
+          }
+        }
+      },
+      "AuthConfig": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "googleClientId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "emailDelivery": {
+            "type": "string",
+            "enum": [
+              "smtp",
+              "resend",
+              "outbox"
+            ]
+          },
+          "passwordPolicy": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "minLength": {
+                "type": "integer",
+                "const": 8
+              }
+            }
           }
         }
       }

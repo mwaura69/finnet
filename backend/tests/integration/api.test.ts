@@ -5,7 +5,10 @@ import '../setup.js';
 const { createApp } = await import('../../src/app.js');
 const { setEmailSenderForTests } = await import('../../src/utils/email.service.js');
 const { db } = await import('../../src/db/index.js');
-const mail: { text: string; html?: string }[] = [];
+const mail: {
+  text: string;
+  html?: string;
+}[] = [];
 setEmailSenderForTests(async (message) => {
   mail.push(message);
   return { messageId: 'test' };
@@ -145,29 +148,30 @@ test('verified cookie sessions, CSRF, profile, ledger, Excel, receipts, MFA and 
   const reset = new URL(mail.at(-1)!.text.match(/https?:\/\/\S+/)![0]).searchParams.get('token');
   await post('/auth/reset-password', { token: reset, password: 'Changed123!' }).expect(200);
   assert.equal(
-    db.prepare('SELECT name FROM users WHERE email=?').get('test@example.test')?.name,
+    (await db.prepare('SELECT name FROM users WHERE email=?').get('test@example.test'))?.name,
     'Updated Analyst',
   );
 });
 test('refresh reuse revokes the session and viewer role blocks financial writes', async () => {
   const { newSession, refreshSession, activeSession } =
     await import('../../src/security/sessions.js');
-  const user = db.prepare('SELECT id FROM users WHERE email=?').get('test@example.test')!;
+  const user = (await db.prepare('SELECT id FROM users WHERE email=?').get('test@example.test'))!;
   const id = String(user.id);
-  const grant = newSession(id, true);
-  refreshSession(grant.cookies.refresh);
-  assert.throws(() => refreshSession(grant.cookies.refresh));
-  assert.throws(() =>
-    activeSession(
-      String(
-        db
-          .prepare('SELECT id FROM sessions WHERE user_id=? ORDER BY created_at DESC LIMIT 1')
-          .get(id)!.id,
+  const grant = await newSession(id, true);
+  await refreshSession(grant.cookies.refresh);
+  await assert.rejects(async () => await refreshSession(grant.cookies.refresh));
+  await assert.rejects(
+    async () =>
+      await activeSession(
+        String(
+          (await db
+            .prepare('SELECT id FROM sessions WHERE user_id=? ORDER BY created_at DESC LIMIT 1')
+            .get(id))!.id,
+        ),
       ),
-    ),
   );
-  db.prepare("UPDATE users SET role='viewer' WHERE id=?").run(id);
-  const viewer = newSession(id, false);
+  await db.prepare("UPDATE users SET role='viewer' WHERE id=?").run(id);
+  const viewer = await newSession(id, false);
   const browser = request.agent(app);
   const token = (await browser.get('/api/v1/auth/csrf')).body.data.csrfToken;
   await browser
@@ -176,5 +180,5 @@ test('refresh reuse revokes the session and viewer role blocks financial writes'
     .set('X-CSRF-Token', token)
     .send({ name: 'Forbidden portfolio', clientName: 'Viewer', baseCurrency: 'KES' })
     .expect(403);
-  db.prepare("UPDATE users SET role='analyst' WHERE id=?").run(id);
+  await db.prepare("UPDATE users SET role='analyst' WHERE id=?").run(id);
 });

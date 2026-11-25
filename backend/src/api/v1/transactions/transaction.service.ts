@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { DatabaseSync } from 'node:sqlite';
+import type { Database } from '../../../db/connection.js';
 import ExcelJS from 'exceljs';
 import { db } from '../../../db/index.js';
 import { ApiError } from '../../../utils/ApiError.js';
@@ -22,12 +22,12 @@ export interface TransactionFilters {
 }
 export class TransactionService {
   private access: PortfolioAccess;
-  constructor(private connection: DatabaseSync = db) {
+  constructor(private connection: Database = db) {
     this.access = new PortfolioAccess(connection);
   }
-  list(userId: string, portfolioId: string, filters: TransactionFilters = {}) {
-    this.access.require(userId, portfolioId);
-    const rows = readLedger(this.connection, portfolioId).filter(
+  async list(userId: string, portfolioId: string, filters: TransactionFilters = {}) {
+    await this.access.require(userId, portfolioId);
+    const rows = (await readLedger(this.connection, portfolioId)).filter(
       (t) =>
         (!filters.instrument ||
           t.instrument.toLowerCase().includes(filters.instrument.toLowerCase())) &&
@@ -49,7 +49,7 @@ export class TransactionService {
     }
     return rows;
   }
-  create(userId: string, portfolioId: string, input: TransactionInput) {
+  async create(userId: string, portfolioId: string, input: TransactionInput) {
     const parsed = transactionSchema.parse(input);
     if (
       !Number.isSafeInteger(Math.round(parsed.unitPrice * 100)) ||
@@ -60,9 +60,9 @@ export class TransactionService {
         'AMOUNT_TOO_LARGE',
         'The transaction amount exceeds the supported precision.',
       );
-    return atomic(this.connection, () => {
-      const p = this.access.require(userId, portfolioId, 'write'),
-        ledger = readLedger(this.connection, portfolioId);
+    return await atomic(this.connection, async () => {
+      const p = await this.access.require(userId, portfolioId, 'write'),
+        ledger = await readLedger(this.connection, portfolioId);
       const latest = ledger.reduce((n, t) => Math.max(n, Date.parse(t.createdAt) || 0), 0);
       const transaction: TransactionDto = {
         ...parsed,
@@ -70,7 +70,7 @@ export class TransactionService {
         createdAt: new Date(Math.max(Date.now(), latest + 1)).toISOString(),
       };
       summarize([...ledger, transaction]);
-      this.connection
+      await this.connection
         .prepare(
           'INSERT INTO transactions(id,portfolio_id,instrument,type,quantity,unit_price_minor,trade_date,created_at,created_by) VALUES(?,?,?,?,?,?,?,?,?)',
         )
@@ -85,19 +85,19 @@ export class TransactionService {
           transaction.createdAt,
           userId,
         );
-      queueTransactionNotification(this.connection, userId, p, transaction, 'recorded');
+      await queueTransactionNotification(this.connection, userId, p, transaction, 'recorded');
       return transaction;
     });
   }
-  remove(userId: string, transactionId: string) {
-    atomic(this.connection, () => {
-      const row = this.connection
+  async remove(userId: string, transactionId: string) {
+    await atomic(this.connection, async () => {
+      const row = await this.connection
         .prepare('SELECT portfolio_id FROM transactions WHERE id=?')
         .get(transactionId);
       if (!row)
         throw new ApiError(404, 'TRANSACTION_NOT_FOUND', 'This transaction could not be found.');
-      const p = this.access.require(userId, String(row['portfolio_id']), 'write');
-      const ledger = readLedger(this.connection, p.id),
+      const p = await this.access.require(userId, String(row['portfolio_id']), 'write');
+      const ledger = await readLedger(this.connection, p.id),
         transaction = ledger.find((t) => t.id === transactionId)!;
       try {
         summarize(ledger.filter((t) => t.id !== transactionId));
@@ -110,19 +110,21 @@ export class TransactionService {
           );
         throw error;
       }
-      this.connection.prepare('DELETE FROM transactions WHERE id=?').run(transactionId);
-      queueTransactionNotification(this.connection, userId, p, transaction, 'deleted');
+      await this.connection.prepare('DELETE FROM transactions WHERE id=?').run(transactionId);
+      await queueTransactionNotification(this.connection, userId, p, transaction, 'deleted');
     });
   }
-  receipt(userId: string, transactionId: string) {
-    const row = this.connection
+  async receipt(userId: string, transactionId: string) {
+    const row = await this.connection
       .prepare('SELECT portfolio_id,created_by FROM transactions WHERE id=?')
       .get(transactionId);
     if (!row)
       throw new ApiError(404, 'TRANSACTION_NOT_FOUND', 'This transaction could not be found.');
-    const p = this.access.require(userId, String(row['portfolio_id']));
-    const transaction = readLedger(this.connection, p.id).find((t) => t.id === transactionId)!;
-    const analyst = this.connection
+    const p = await this.access.require(userId, String(row['portfolio_id']));
+    const transaction = (await readLedger(this.connection, p.id)).find(
+      (t) => t.id === transactionId,
+    )!;
+    const analyst = await this.connection
       .prepare('SELECT name,email FROM users WHERE id=?')
       .get(String(row['created_by'] || p.user_id));
     return {
@@ -147,8 +149,8 @@ export class TransactionService {
     };
   }
   async exportWorkbook(userId: string, portfolioId: string, filters: TransactionFilters = {}) {
-    const p = this.access.require(userId, portfolioId),
-      rows = this.list(userId, portfolioId, filters),
+    const p = await this.access.require(userId, portfolioId),
+      rows = await this.list(userId, portfolioId, filters),
       workbook = new ExcelJS.Workbook();
     workbook.creator = 'FinTrack by Finnet Technologies';
     workbook.created = new Date();

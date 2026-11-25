@@ -16,7 +16,7 @@ export const update = asyncHandler(async (req, res) =>
 );
 export const remove = asyncHandler(async (req, res) => {
   await business.portfolios.remove(req.userId, String(req.params['id']));
-  flushTransactionNotifications();
+  await flushTransactionNotifications();
   res.sendStatus(204);
 });
 export const summary = asyncHandler(async (req, res) =>
