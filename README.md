@@ -32,7 +32,122 @@ Copy the example only if you do not already have a `.env`. Open http://localhost
 
 Local persistence defaults to SQLite in `backend/data/fintrack.sqlite`. With `MAIL_DELIVERY=outbox`, new-account confirmation/reset links and MFA codes are private JSON files in `backend/data/outbox`; they are not sent to an inbox. Set provider credentials only in your ignored `.env` or hosting dashboard.
 
-Alternatively, `docker compose up --build` runs the API, Angular/nginx frontend and persistent SQLite volume at http://localhost:8080. The Docker daemon must be running. [Deployment guide](docs/DEPLOYMENT.md).
+## Build and run with Docker
+
+Install Docker Desktop (or Docker Engine with the Compose plugin) and start the Docker daemon. Run every command below **from the repository root**, where `compose.yaml` is located. Stop any local servers already using ports 3000 or 8080. A host installation of Node/npm is not required for Docker: the images build the application inside Node 24 containers.
+
+### Option 1: start the full stack with Compose
+
+```sh
+# Check the configuration and build both application images.
+docker compose config --quiet
+docker compose build
+
+# Start the seed job, backend API and frontend in the background.
+docker compose up -d
+
+# Check containers and follow application logs.
+docker compose ps -a
+docker compose logs -f api web
+```
+
+Alternatively, build and start in one command:
+
+```sh
+docker compose up --build -d
+```
+
+The seed job is expected to finish with exit code 0. The API starts after seeding, and the frontend starts after the API health check passes. SQLite data lives in a named Docker volume, so container replacement does not remove it.
+
+| Service | Local URL |
+| --- | --- |
+| Frontend | http://localhost:8080 |
+| Backend health | http://localhost:3000/health |
+| Swagger | http://localhost:3000/api/v1/docs/ |
+| Swagger through frontend proxy | http://localhost:8080/api/v1/docs/ |
+
+Sign in with `demo@fintrack.local` / `FinTrackDemo!2026`. Compose uses development settings and a private email outbox; it does not require Supabase or send real emails by default.
+
+```sh
+# Rebuild and start after changing application code.
+docker compose up --build -d
+
+# Restart just the running application services.
+docker compose restart api web
+
+# Stop and remove the containers/network; retain the database volume.
+docker compose down
+```
+
+### Option 2: build and run backend/frontend separately
+
+Use this instead of Compose when you want to manage each container yourself. Both builds use `.` as their context because the Dockerfiles need the root workspace lockfile and both package manifests. Keep the backend container name `api`: the frontend nginx configuration uses `api:3000` on the shared network.
+
+```sh
+# Build each image from the repository root.
+docker build -f backend/Dockerfile -t fintrack-backend:local .
+docker build -f Frontend/Dockerfile -t fintrack-frontend:local .
+
+# Create a shared network and persistent database volume once.
+docker network create fintrack-network
+docker volume create fintrack-data
+```
+
+Start the backend first:
+
+```sh
+docker run -d \
+  --name api \
+  --network fintrack-network \
+  -p 127.0.0.1:3000:3000 \
+  --mount type=volume,source=fintrack-data,target=/app/backend/data \
+  -e NODE_ENV=development \
+  -e DEMO_MODE=false \
+  -e SEED_DEMO_ON_START=true \
+  -e PORT=3000 \
+  -e DATABASE_PATH=/app/backend/data/fintrack.sqlite \
+  -e FRONTEND_ORIGIN=http://localhost:8080 \
+  -e MAIL_DELIVERY=outbox \
+  fintrack-backend:local
+
+# Wait until this returns a healthy response before starting the frontend.
+curl --fail http://localhost:3000/health
+docker logs -f api
+```
+
+`SEED_DEMO_ON_START=true` creates the missing demo account and sample records in the mounted volume. Repeated starts preserve existing credentials and data. Press Ctrl+C to leave log-following; the detached container keeps running.
+
+Start the frontend, which serves the compiled Angular app through nginx and proxies `/api` to the backend:
+
+```sh
+docker run -d \
+  --name fintrack-web \
+  --network fintrack-network \
+  -p 127.0.0.1:8080:80 \
+  fintrack-frontend:local
+
+# Inspect the frontend logs.
+docker logs -f fintrack-web
+```
+
+Open http://localhost:8080. This manual example uses the same URLs and demo credentials as Compose, but a separate named volume from Compose's project-prefixed volume.
+
+```sh
+# Stop the manual containers.
+docker stop fintrack-web api
+
+# Start those existing containers again (backend first).
+docker start api
+# Wait for backend health, then:
+docker start fintrack-web
+
+# Remove stopped containers and their network; retain fintrack-data.
+docker stop fintrack-web api
+docker rm fintrack-web api
+docker network rm fintrack-network
+```
+
+For Supabase instead of local SQLite, put the private `DATABASE_URL` in an ignored Docker environment file and add `--env-file /private/path/backend-docker.env` to the backend `docker run` command. PostgreSQL takes precedence over `DATABASE_PATH`; do not put the connection string in an image, frontend build, or README. These examples use HTTP development settings; public HTTPS deployments require the production secrets, exact origin and email settings in the [deployment guide](docs/DEPLOYMENT.md).
 
 ## Architecture, stack and rationale
 
