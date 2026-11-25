@@ -116,6 +116,5 @@ Backend integration tests use isolated in-memory databases and captured emails. 
 
 [Deployment steps](docs/DEPLOYMENT.md) cover Render, Supabase, Netlify proxying, secrets, CORS, email, demo initialization and live smoke checks. [Git practice](docs/GIT_WORKFLOW.md), [account security](docs/SECURITY_AND_ACCOUNT_FLOWS.md), [requirement mapping](docs/ASSESSMENT_CHECKLIST.md), and a [submission email draft](docs/SUBMISSION_EMAIL.txt) are included.
 
-Deadline: **25 November 2026, 23:59 EAT**. The brief reviews the last commit before the deadline and asks for no commits afterwards. Keep both deployments and the database available for at least 14 days after submission (through 9 December 2026 if submitting on 25 November). The email draft is for the candidate to review and send.
 
-**AI disclosure:** OpenAI Codex assisted with architecture, implementation, visual assets, testing, debugging and documentation. The candidate must review, understand and be able to explain the submitted code. No production-grade security certification, formal WCAG certification or unobserved deployment success is claimed.
+**AI disclosure:** OpenAI Codex assisted with architecture, implementation, visual assets, testing, debugging and documentation. No production-grade security certification, formal WCAG certification or unobserved deployment success is claimed.
